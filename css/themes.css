@@ -1,0 +1,17 @@
+body.theme-dark{ }
+body.theme-neon{
+  --accent: #22d3ee;
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(34,211,238,0.18), transparent 60%),
+              radial-gradient(900px 500px at 80% 10%, rgba(124,92,255,0.14), transparent 55%),
+              linear-gradient(180deg, #05070c, #070a0f);
+}
+body.theme-light{
+  --bg: #f4f7ff;
+  --panel: rgba(255,255,255,0.78);
+  --panel2: rgba(255,255,255,0.92);
+  --text: #0b1220;
+  --muted: rgba(11,18,32,0.64);
+  --border: rgba(11,18,32,0.14);
+  --shadow: 0 12px 34px rgba(11,18,32,0.12);
+  background: linear-gradient(180deg, #ffffff, #eef3ff);
+}

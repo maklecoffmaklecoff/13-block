@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>13 Блок — клан Ton Prison</title>
+
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/themes.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">13</div>
+      <div class="brand-text">
+        <div class="title">13 Блок</div>
+        <div class="subtitle">Ton Prison • Клан</div>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab" data-route="home">Главная</button>
+      <button class="tab" data-route="roster">Состав клана</button>
+      <button class="tab" data-route="events">События</button>
+      <button class="tab authed-only" data-route="profile">Профиль</button>
+      <button class="tab authed-only" data-route="chat">Чат</button>
+      <button class="tab admin-only" data-route="admin">Админ</button>
+    </nav>
+
+    <div class="actions">
+      <select id="themeSelect" class="select">
+        <option value="theme-dark">Тёмная</option>
+        <option value="theme-neon">Neon</option>
+        <option value="theme-light">Светлая</option>
+      </select>
+
+      <div class="userbox" id="userbox">
+        <button class="btn" id="btnLogin">Войти</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="page"></section>
+  </main>
+
+  <div id="notifyHost" class="notify-host" aria-live="polite"></div>
+
+  <div id="modalHost" class="modal-host hidden"></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
