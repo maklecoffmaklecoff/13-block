@@ -280,3 +280,56 @@ export function listenPinned(cb){
 export async function setPinned(payload){
   await setDoc(doc(db, "chatPinned", "main"), { ...payload, pinnedAt: serverTimestamp() }, { merge:true });
 }
+
+export async function deleteEvent(eventId){
+  await deleteDoc(doc(db, "events", eventId));
+}
+
+// --- extra helpers ---
+
+export async function isMember(uid){
+  const snap = await getDoc(doc(db, "members", uid));
+  return snap.exists();
+}
+
+export async function getEvent(eventId){
+  const snap = await getDoc(doc(db, "events", eventId));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() }) : null;
+}
+
+import {
+  // убедись что они уже есть, иначе добавь в импорт сверху:
+  // writeBatch
+  writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+/* ---- Chat extra ---- */
+export async function updateChatMessage(msgId, newText){
+  await updateDoc(doc(db, "chatMessages", msgId), { text: newText });
+}
+
+export function listenTyping(cb){
+  const q = query(collection(db, "chatTyping"), orderBy("updatedAt", "desc"), limit(20));
+  return onSnapshot(q, (snap)=>{
+    const list = snap.docs.map(d=>d.data());
+    cb(list);
+  });
+}
+
+export async function setTyping(uid, displayName, isTyping){
+  const ref = doc(db, "chatTyping", uid);
+  if (!isTyping){
+    await deleteDoc(ref);
+    return;
+  }
+  await setDoc(ref, { uid, displayName, updatedAt: serverTimestamp() }, { merge:true });
+}
+
+export async function adminClearChatLastN(n){
+  const q = query(collection(db, "chatMessages"), orderBy("createdAt", "desc"), limit(n));
+  const snap = await getDocs(q);
+  const batch = writeBatch(db);
+  snap.docs.forEach(d=> batch.delete(d.ref));
+  await batch.commit();
+}
+

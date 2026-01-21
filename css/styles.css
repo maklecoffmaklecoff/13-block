@@ -315,3 +315,39 @@ body{
   padding: 0;
 }
 .linkbtn:hover{ text-decoration: underline; }
+
+.member-ava{ object-fit: cover; }
+
+/* --- Mobile tuning --- */
+@media (max-width: 640px){
+  .topbar{ gap:10px; padding: 12px 12px; }
+  .tabs{ gap:6px; }
+  .tab{ padding: 9px 10px; font-size: 13px; }
+  .username{ max-width: 120px; }
+  .container{ padding: 0 12px 34px; }
+
+  .row{ align-items: stretch; }
+  .btn{ width: 100%; }
+  .btn.small{ width: auto; } /* small buttons stay inline */
+  .select{ width: 100%; }
+
+  .member-head{ flex-direction: column; align-items: stretch; }
+  .member-actions{ justify-content: stretch; }
+  .member-actions .btn.small{ width: 100%; }
+
+  .grid.two{ grid-template-columns: 1fr; }
+  .member-grid{ grid-template-columns: 1fr; }
+
+  .table{ display:block; overflow:auto; }
+}
+
+/* Tabs horizontal scroll + snap */
+.tabs{
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+}
+.tabs::-webkit-scrollbar{ height: 6px; }
+.tabs::-webkit-scrollbar-thumb{ background: rgba(255,255,255,0.12); border-radius: 99px; }
+.tab{ scroll-snap-align: start; white-space: nowrap; }

@@ -5,9 +5,7 @@ import {
   logout,
   loginEmail,
   registerEmail,
-  resetPassword,
-  linkEmailPassword,
-  changePasswordWithOld
+  resetPassword
 } from "./auth.js";
 
 import { parseHash } from "./router.js";
@@ -50,9 +48,8 @@ function applyTheme(){
   });
 }
 
-function openAuthModal(){
-  const currentEmail = state.firebaseUser?.email || "";
-
+function openLoginModal(){
+  // Важно: этот модал доступен только гостям (неавторизованным)
   const node = document.createElement("div");
   node.innerHTML = `
     <div class="authbar">
@@ -60,16 +57,13 @@ function openAuthModal(){
         <button data-mode="login" class="active">Вход</button>
         <button data-mode="register">Регистрация</button>
         <button data-mode="reset">Сброс</button>
-        ${state.authed ? `<button data-mode="account">Аккаунт</button>` : ``}
       </div>
     </div>
-
     <div class="hr"></div>
-
     <div id="pane"></div>
   `;
 
-  const close = openModal("Авторизация", node);
+  const close = openModal("Вход / Регистрация", node);
   const pane = node.querySelector("#pane");
   const seg = node.querySelector("#seg");
 
@@ -82,18 +76,15 @@ function openAuthModal(){
       pane.innerHTML = `
         <div class="formgrid">
           <button class="btn primary" id="google">Войти через Google</button>
-
           <div class="hr"></div>
-
           <div>
             <div class="label">Email</div>
-            <input class="input" id="email" type="email" autocomplete="email" placeholder="you@mail.com" value="${escapeAttr(currentEmail)}" />
+            <input class="input" id="email" type="email" autocomplete="email" placeholder="you@mail.com" />
           </div>
           <div>
             <div class="label">Пароль</div>
             <input class="input" id="pass" type="password" autocomplete="current-password" placeholder="••••••••" />
           </div>
-
           <div class="help-row">
             <button class="btn primary" id="loginEmail">Войти</button>
             <button class="linkbtn" id="toReset" type="button">Забыли пароль?</button>
@@ -127,9 +118,7 @@ function openAuthModal(){
       pane.innerHTML = `
         <div class="formgrid">
           <button class="btn primary" id="google">Регистрация через Google</button>
-
           <div class="hr"></div>
-
           <div>
             <div class="label">Ник</div>
             <input class="input" id="name" type="text" autocomplete="nickname" placeholder="Ваш ник" />
@@ -142,7 +131,6 @@ function openAuthModal(){
             <div class="label">Пароль</div>
             <input class="input" id="regPass" type="password" autocomplete="new-password" placeholder="Минимум 6 символов" />
           </div>
-
           <div class="help-row">
             <button class="btn ok" id="register">Создать аккаунт</button>
             <button class="linkbtn" id="toLogin" type="button">Уже есть аккаунт?</button>
@@ -182,9 +170,8 @@ function openAuthModal(){
           <div class="muted">Мы отправим письмо для сброса пароля на вашу почту.</div>
           <div>
             <div class="label">Email</div>
-            <input class="input" id="email" type="email" autocomplete="email" placeholder="you@mail.com" value="${escapeAttr(currentEmail)}" />
+            <input class="input" id="email" type="email" autocomplete="email" placeholder="you@mail.com" />
           </div>
-
           <div class="help-row">
             <button class="btn primary" id="send">Отправить письмо</button>
             <button class="linkbtn" id="toLogin" type="button">Вернуться ко входу</button>
@@ -206,89 +193,6 @@ function openAuthModal(){
       pane.querySelector("#toLogin").addEventListener("click", ()=> setMode("login"));
       return;
     }
-
-    if (mode === "account"){
-      if (!state.authed){
-        pane.innerHTML = `<div class="muted">Нужно войти.</div>`;
-        return;
-      }
-
-      pane.innerHTML = `
-        <div class="formgrid">
-          <div class="row">
-            <div>
-              <div style="font-weight:1000;">Аккаунт</div>
-              <div class="muted" style="font-size:12px;">${escapeHtml(state.firebaseUser?.email || "Email не указан")}</div>
-            </div>
-            <span class="badge ${state.isAdmin ? "ok" : ""}">${state.isAdmin ? "Админ" : "Пользователь"}</span>
-          </div>
-
-          <div class="hr"></div>
-
-          <div class="section-title">Смена пароля</div>
-          <div class="muted" style="font-size:12px;">Если вход через Google без привязки пароля — сначала привяжите Email/Password.</div>
-
-          <div>
-            <div class="label">Email</div>
-            <input class="input" id="cpEmail" type="email" value="${escapeAttr(currentEmail)}" />
-          </div>
-          <div>
-            <div class="label">Текущий пароль</div>
-            <input class="input" id="oldPass" type="password" autocomplete="current-password" placeholder="••••••••" />
-          </div>
-          <div>
-            <div class="label">Новый пароль</div>
-            <input class="input" id="newPass" type="password" autocomplete="new-password" placeholder="Минимум 6 символов" />
-          </div>
-          <button class="btn primary" id="changePass">Сменить пароль</button>
-
-          <div class="hr"></div>
-
-          <div class="section-title">Привязать Email/Password</div>
-          <div class="muted" style="font-size:12px;">Полезно, если вы входили через Google и хотите иметь вход по паролю.</div>
-
-          <div>
-            <div class="label">Email</div>
-            <input class="input" id="linkEmail" type="email" value="${escapeAttr(currentEmail)}" />
-          </div>
-          <div>
-            <div class="label">Пароль</div>
-            <input class="input" id="linkPass" type="password" autocomplete="new-password" placeholder="Минимум 6 символов" />
-          </div>
-          <button class="btn" id="link">Привязать</button>
-        </div>
-      `;
-
-      pane.querySelector("#changePass").addEventListener("click", async ()=>{
-        try{
-          const email = pane.querySelector("#cpEmail").value.trim();
-          const oldPassword = pane.querySelector("#oldPass").value;
-          const newPassword = pane.querySelector("#newPass").value;
-          await changePasswordWithOld({ email, oldPassword, newPassword });
-          notify("ok","Готово","Пароль изменён");
-          pane.querySelector("#oldPass").value = "";
-          pane.querySelector("#newPass").value = "";
-        }catch(e){
-          notify("bad","Ошибка", e.message);
-        }
-      });
-
-      pane.querySelector("#link").addEventListener("click", async ()=>{
-        try{
-          const email = pane.querySelector("#linkEmail").value.trim();
-          const password = pane.querySelector("#linkPass").value;
-          if (!email) throw new Error("Укажите email");
-          if (!password || password.length < 6) throw new Error("Пароль минимум 6 символов");
-          await linkEmailPassword({ email, password });
-          notify("ok","Готово","Email/Password привязан");
-          pane.querySelector("#linkPass").value = "";
-        }catch(e){
-          notify("bad","Ошибка", e.message);
-        }
-      });
-
-      return;
-    }
   };
 
   seg.addEventListener("click", (e)=>{
@@ -306,14 +210,16 @@ function renderUserbox(){
   box.innerHTML = "";
 
   if (!state.authed){
+    // Гость видит только "Войти"
     const btn = document.createElement("button");
     btn.className = "btn";
     btn.textContent = "Войти";
-    btn.addEventListener("click", ()=> openAuthModal());
+    btn.addEventListener("click", ()=> openLoginModal());
     box.appendChild(btn);
     return;
   }
 
+  // Авторизованный НЕ видит "войти/регистрация"
   const avatar = document.createElement("img");
   avatar.className = "avatar";
   avatar.alt = "avatar";
@@ -328,11 +234,6 @@ function renderUserbox(){
   meta.querySelector(".username").textContent = state.userDoc?.displayName || state.firebaseUser?.displayName || "Игрок";
   meta.querySelector(".userrole").textContent = state.isAdmin ? "Админ" : "Пользователь";
 
-  const account = document.createElement("button");
-  account.className = "btn";
-  account.textContent = "Аккаунт";
-  account.addEventListener("click", ()=> openAuthModal());
-
   const out = document.createElement("button");
   out.className = "btn";
   out.textContent = "Выйти";
@@ -345,7 +246,7 @@ function renderUserbox(){
     }
   });
 
-  box.append(avatar, meta, account, out);
+  box.append(avatar, meta, out);
 }
 
 function showLoading(page){
@@ -417,15 +318,6 @@ function initTabs(){
     if (!btn) return;
     location.hash = `#${btn.dataset.route}`;
   });
-}
-
-function escapeAttr(s){
-  return String(s ?? "").replace(/"/g, "&quot;");
-}
-function escapeHtml(s){
-  return String(s ?? "").replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[m]));
 }
 
 window.addEventListener("hashchange", renderRoute);
