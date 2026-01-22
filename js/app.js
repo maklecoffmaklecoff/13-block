@@ -1,13 +1,5 @@
 // js/app.js
-import {
-  initAuth,
-  loginGoogle,
-  logout,
-  loginEmail,
-  registerEmail,
-  resetPassword
-} from "./auth.js";
-
+import { initAuth, loginGoogle, logout, loginEmail, registerEmail, resetPassword } from "./auth.js";
 import { parseHash } from "./router.js";
 import { setActiveTab, setAuthedVisibility, openModal } from "./ui.js";
 import { notify } from "./notify.js";
@@ -39,17 +31,17 @@ function applyTheme(){
   const saved = localStorage.getItem("theme") || "theme-dark";
   document.body.classList.remove("theme-dark","theme-neon","theme-light");
   document.body.classList.add(saved);
-  sel.value = saved;
-
-  sel.addEventListener("change", ()=>{
-    localStorage.setItem("theme", sel.value);
-    document.body.classList.remove("theme-dark","theme-neon","theme-light");
-    document.body.classList.add(sel.value);
-  });
+  if (sel){
+    sel.value = saved;
+    sel.addEventListener("change", ()=>{
+      localStorage.setItem("theme", sel.value);
+      document.body.classList.remove("theme-dark","theme-neon","theme-light");
+      document.body.classList.add(sel.value);
+    });
+  }
 }
 
 function openLoginModal(){
-  // Важно: этот модал доступен только гостям (неавторизованным)
   const node = document.createElement("div");
   node.innerHTML = `
     <div class="authbar">
@@ -86,7 +78,7 @@ function openLoginModal(){
             <input class="input" id="pass" type="password" autocomplete="current-password" placeholder="••••••••" />
           </div>
           <div class="help-row">
-            <button class="btn primary" id="loginEmail">Войти</button>
+            <button class="btn primary" id="loginEmail" style="width:auto;">Войти</button>
             <button class="linkbtn" id="toReset" type="button">Забыли пароль?</button>
           </div>
         </div>
@@ -132,7 +124,7 @@ function openLoginModal(){
             <input class="input" id="regPass" type="password" autocomplete="new-password" placeholder="Минимум 6 символов" />
           </div>
           <div class="help-row">
-            <button class="btn ok" id="register">Создать аккаунт</button>
+            <button class="btn ok" id="register" style="width:auto;">Создать аккаунт</button>
             <button class="linkbtn" id="toLogin" type="button">Уже есть аккаунт?</button>
           </div>
         </div>
@@ -150,7 +142,7 @@ function openLoginModal(){
           const password = pane.querySelector("#regPass").value;
 
           if (!email) throw new Error("Укажите email");
-          if (!password || password.length < 6) throw new Error("Пароль должен быть минимум 6 символов");
+          if (!password || password.length < 6) throw new Error("Пароль минимум 6 символов");
 
           await registerEmail({ email, password, displayName });
           notify("ok","Готово","Аккаунт создан, вы вошли");
@@ -167,13 +159,13 @@ function openLoginModal(){
     if (mode === "reset"){
       pane.innerHTML = `
         <div class="formgrid">
-          <div class="muted">Мы отправим письмо для сброса пароля на вашу почту.</div>
+          <div class="muted">Мы отправим письмо для сброса пароля.</div>
           <div>
             <div class="label">Email</div>
             <input class="input" id="email" type="email" autocomplete="email" placeholder="you@mail.com" />
           </div>
           <div class="help-row">
-            <button class="btn primary" id="send">Отправить письмо</button>
+            <button class="btn primary" id="send" style="width:auto;">Отправить</button>
             <button class="linkbtn" id="toLogin" type="button">Вернуться ко входу</button>
           </div>
         </div>
@@ -205,12 +197,58 @@ function openLoginModal(){
   return close;
 }
 
+function initTabs(){
+  const tabs = document.getElementById("tabs");
+  if (!tabs) return;
+  tabs.addEventListener("click", (e)=>{
+    const btn = e.target.closest("[data-route]");
+    if (!btn) return;
+    location.hash = `#${btn.dataset.route}`;
+  });
+}
+
+function initTabsCollapse(){
+  const toggle = document.getElementById("tabsToggle");
+  const tabs = document.getElementById("tabs");
+  if (!toggle || !tabs) return;
+
+  const apply = ()=>{
+    const isMobile = window.matchMedia("(max-width: 860px)").matches;
+    if (!isMobile){
+      tabs.classList.remove("collapsed");
+      toggle.setAttribute("aria-expanded", "true");
+      return;
+    }
+    if (!tabs.dataset.inited){
+      tabs.classList.add("collapsed");
+      toggle.setAttribute("aria-expanded", "false");
+      tabs.dataset.inited = "1";
+    }
+  };
+
+  apply();
+  window.addEventListener("resize", apply);
+
+  toggle.addEventListener("click", ()=>{
+    const collapsed = tabs.classList.toggle("collapsed");
+    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  });
+
+  tabs.addEventListener("click", (e)=>{
+    const btn = e.target.closest("[data-route]");
+    if (!btn) return;
+    if (window.matchMedia("(max-width: 860px)").matches){
+      tabs.classList.add("collapsed");
+      toggle.setAttribute("aria-expanded", "false");
+    }
+  });
+}
+
 function renderUserbox(){
   const box = document.getElementById("userbox");
   box.innerHTML = "";
 
   if (!state.authed){
-    // Гость видит только "Войти"
     const btn = document.createElement("button");
     btn.className = "btn";
     btn.textContent = "Войти";
@@ -219,7 +257,15 @@ function renderUserbox(){
     return;
   }
 
-  // Авторизованный НЕ видит "войти/регистрация"
+  const me = document.createElement("button");
+  me.className = "btn";
+  me.style.display = "flex";
+  me.style.gap = "10px";
+  me.style.alignItems = "center";
+  me.style.width = "auto";
+  me.title = "Открыть профиль";
+  me.addEventListener("click", ()=>{ location.hash = "#profile"; });
+
   const avatar = document.createElement("img");
   avatar.className = "avatar";
   avatar.alt = "avatar";
@@ -234,6 +280,8 @@ function renderUserbox(){
   meta.querySelector(".username").textContent = state.userDoc?.displayName || state.firebaseUser?.displayName || "Игрок";
   meta.querySelector(".userrole").textContent = state.isAdmin ? "Админ" : "Пользователь";
 
+  me.append(avatar, meta);
+
   const out = document.createElement("button");
   out.className = "btn";
   out.textContent = "Выйти";
@@ -246,7 +294,7 @@ function renderUserbox(){
     }
   });
 
-  box.append(avatar, meta, out);
+  box.append(me, out);
 }
 
 function showLoading(page){
@@ -312,18 +360,11 @@ async function renderRoute(){
   page.appendChild(node);
 }
 
-function initTabs(){
-  document.getElementById("tabs").addEventListener("click", (e)=>{
-    const btn = e.target.closest("[data-route]");
-    if (!btn) return;
-    location.hash = `#${btn.dataset.route}`;
-  });
-}
-
 window.addEventListener("hashchange", renderRoute);
 
 applyTheme();
 initTabs();
+initTabsCollapse();
 
 initAuth(({ firebaseUser, userDoc })=>{
   state.firebaseUser = firebaseUser;

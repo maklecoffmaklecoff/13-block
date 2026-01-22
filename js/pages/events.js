@@ -3,7 +3,8 @@ import {
   createEvent, listEvents, deleteEvent, getEvent, updateEvent,
   submitEventApplication, deleteEventApplication, getMyEventApplication,
   setEventApplicationStatus, listenEventApplications,
-  listenEventParticipants, addParticipant, removeParticipant
+  listenEventParticipants, addParticipant, removeParticipant,
+  getMyProfile
 } from "../db.js";
 import { notify } from "../notify.js";
 import { openModal, renderStatsKV } from "../ui.js";
@@ -21,9 +22,9 @@ export async function renderEvents(ctx){
     <div class="row">
       <div>
         <div class="card-title">События</div>
-        <div class="card-sub">Описание</div>
+        <div class="card-sub">Заявка берёт ник/статы из профиля</div>
       </div>
-      ${ctx.isAdmin ? `<button class="btn primary" id="btnNew" style="width:auto;">Создать событие</button>` : ``}
+      ${ctx.isAdmin ? `<button class="btn primary" id="btnNew" style="width:auto;">Создать</button>` : ``}
     </div>
   `;
   root.appendChild(header);
@@ -62,7 +63,7 @@ export async function renderEvents(ctx){
         <div style="min-width:240px;">
           <div style="font-weight:1000; font-size:16px;">${escapeHtml(ev.title || "")}</div>
 
-          <div class="muted" id="desc-${escapeAttr(ev.id)}" style="margin-top:6px; white-space:pre-wrap;">
+          <div class="muted clamp2" id="desc-${escapeAttr(ev.id)}" style="margin-top:6px; white-space:pre-wrap;">
             ${escapeHtml(ev.desc || "")}
           </div>
 
@@ -75,38 +76,29 @@ export async function renderEvents(ctx){
         </div>
 
         <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-          <button class="btn small" data-toggle="${ev.id}">Описание</button>
-          <button class="btn small" data-req="${ev.id}">Требования</button>
-          <button class="btn small" data-part="${ev.id}">Участники</button>
+          <button class="btn small" data-toggle="${ev.id}" style="width:auto;">Описание</button>
+          <button class="btn small" data-req="${ev.id}" style="width:auto;">Требования</button>
+          <button class="btn small" data-part="${ev.id}" style="width:auto;">Участники</button>
+          <div id="me-${escapeAttr(ev.id)}" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
 
-          <div id="me-${escapeAttr(ev.id)}" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;"></div>
-
-          ${ctx.isAdmin ? `<button class="btn small" data-admin="${ev.id}">Заявки</button>` : ``}
-          ${ctx.isAdmin ? `<button class="btn small" data-edit="${ev.id}">Редактировать</button>` : ``}
-          ${ctx.isAdmin ? `<button class="btn danger small" data-del="${ev.id}">Удалить</button>` : ``}
+          ${ctx.isAdmin ? `<button class="btn small" data-admin="${ev.id}" style="width:auto;">Заявки</button>` : ``}
+          ${ctx.isAdmin ? `<button class="btn small" data-edit="${ev.id}" style="width:auto;">Редактировать</button>` : ``}
+          ${ctx.isAdmin ? `<button class="btn danger small" data-del="${ev.id}" style="width:auto;">Удалить</button>` : ``}
         </div>
       </div>
     `;
     listWrap.appendChild(card);
 
-    // Accordion: on mobile start collapsed
     const descEl = card.querySelector(`#desc-${CSS.escape(ev.id)}`);
-    let collapsed = window.matchMedia("(max-width: 640px)").matches;
-    const applyDescState = ()=>{
-      if (!collapsed){
-        descEl.style.display = "";
-      } else {
-        descEl.style.display = "none";
-      }
-    };
+    let expanded = !window.matchMedia("(max-width: 640px)").matches;
+    const applyDescState = ()=> descEl.classList.toggle("clamp2", !expanded);
     applyDescState();
 
     card.querySelector(`[data-toggle="${ev.id}"]`).addEventListener("click", ()=>{
-      collapsed = !collapsed;
+      expanded = !expanded;
       applyDescState();
     });
 
-    // participants live + show "leave" button if in participants
     const badge = card.querySelector(`#pcount-${CSS.escape(ev.id)}`);
     const meWrap = card.querySelector(`#me-${CSS.escape(ev.id)}`);
 
@@ -115,50 +107,49 @@ export async function renderEvents(ctx){
       badge.textContent = `Участники: ${count} / ${Number(ev.capacity ?? 0)}`;
       badge.classList.toggle("ok", count > 0);
 
-      // if current user is participant -> show leave
       meWrap.innerHTML = "";
       const meIsIn = ctx.authed && parts.some(p => p.uid === ctx.uid);
 
       if (ctx.authed && meIsIn){
         const btnLeave = document.createElement("button");
         btnLeave.className = "btn danger small";
+        btnLeave.style.width = "auto";
         btnLeave.textContent = "Выйти";
         btnLeave.addEventListener("click", async ()=>{
           try{
             await removeParticipant(ev.id, ctx.uid);
-            notify("warn", "Готово", "Вы вышли из события");
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+            notify("warn","Готово","Вы вышли из события");
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
         meWrap.appendChild(btnLeave);
         return;
       }
 
-      // else show apply/delete application buttons by application status
       if (ctx.authed && !myApp){
         const btnApply = document.createElement("button");
         btnApply.className = "btn primary small";
+        btnApply.style.width = "auto";
         btnApply.textContent = "Подать заявку";
         btnApply.addEventListener("click", async ()=>{
           try{
-            const myStats = ctx.userDoc?.stats || {};
+            const me = await getMyProfile(ctx.uid);
+            const myStats = me.stats || {};
             const req = ev.requirements || {};
             for (const k of Object.keys(req)){
               if (Number(myStats[k] ?? 0) < Number(req[k] ?? 0)){
-                throw new Error("Ваши статы не проходят требования события");
+                throw new Error("Ваши статы не проходят требования события (проверьте профиль)");
               }
             }
+
             await submitEventApplication(ev.id, ctx.uid, {
-              displayName: ctx.userDoc?.displayName || "Игрок",
-              photoURL: ctx.userDoc?.photoURL || "",
+              displayName: me.displayName || "Игрок",
+              photoURL: me.photoURL || "",
               stats: myStats
             });
-            notify("ok", "Отправлено", "Заявка отправлена");
+
+            notify("ok","Отправлено","Заявка отправлена");
             location.reload();
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
         meWrap.appendChild(btnApply);
       }
@@ -166,15 +157,14 @@ export async function renderEvents(ctx){
       if (ctx.authed && myApp){
         const btnDel = document.createElement("button");
         btnDel.className = "btn danger small";
-        btnDel.textContent = "Удалить мою заявку";
+        btnDel.style.width = "auto";
+        btnDel.textContent = "Удалить заявку";
         btnDel.addEventListener("click", async ()=>{
           try{
             await deleteEventApplication(ev.id, ctx.uid);
-            notify("warn", "Удалено", "Ваша заявка удалена");
+            notify("warn","Удалено","Ваша заявка удалена");
             location.reload();
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
         meWrap.appendChild(btnDel);
       }
@@ -197,7 +187,7 @@ export async function renderEvents(ctx){
           <tbody id="pb"></tbody>
         </table>
       `;
-      const close = openModal(`Участники: ${ev.title}`, node);
+      openModal(`Участники: ${ev.title}`, node);
       const tbody = node.querySelector("#pb");
 
       const unsubLocal = listenEventParticipants(ev.id, (parts)=>{
@@ -205,8 +195,8 @@ export async function renderEvents(ctx){
         for (const p of parts){
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td><button class="btn small" data-open="${escapeAttr(p.uid)}">${escapeHtml(p.displayName || p.uid)}</button></td>
-            <td>${ctx.isAdmin ? `<button class="btn danger small" data-kick="${escapeAttr(p.uid)}">Убрать</button>` : ``}</td>
+            <td><button class="btn small" data-open="${escapeAttr(p.uid)}" style="width:auto;">${escapeHtml(p.displayName || p.uid)}</button></td>
+            <td>${ctx.isAdmin ? `<button class="btn danger small" data-kick="${escapeAttr(p.uid)}" style="width:auto;">Убрать</button>` : ``}</td>
           `;
           tbody.appendChild(tr);
 
@@ -217,16 +207,13 @@ export async function renderEvents(ctx){
             kick.addEventListener("click", async ()=>{
               try{
                 await removeParticipant(ev.id, p.uid);
-                notify("warn", "Готово", "Участник убран");
-              }catch(e){
-                notify("bad", "Ошибка", e.message);
-              }
+                notify("warn","Готово","Участник убран");
+              }catch(e){ notify("bad","Ошибка", e.message); }
             });
           }
         }
       });
 
-      // intercept modal close by polling
       const modalHost = document.getElementById("modalHost");
       const pollModal = setInterval(()=>{
         if (modalHost.classList.contains("hidden")){
@@ -234,16 +221,13 @@ export async function renderEvents(ctx){
           clearInterval(pollModal);
         }
       }, 250);
-
-      close();
     });
 
-    // admin apps / edit / delete
     if (ctx.isAdmin){
       card.querySelector(`[data-admin="${ev.id}"]`)?.addEventListener("click", ()=> openAdminAppsModal(ev));
       card.querySelector(`[data-edit="${ev.id}"]`)?.addEventListener("click", async ()=>{
         const fresh = await getEvent(ev.id);
-        if (!fresh) return notify("bad", "Ошибка", "Событие не найдено");
+        if (!fresh) return notify("bad","Ошибка","Событие не найдено");
         openEditEventModal(fresh);
       });
       card.querySelector(`[data-del="${ev.id}"]`)?.addEventListener("click", ()=> openDeleteEventConfirm(ev.id, ev.title));
@@ -266,12 +250,10 @@ export async function renderEvents(ctx){
       try{
         const data = readEventForm(form);
         await createEvent(data);
-        notify("ok", "Создано", "Событие добавлено");
+        notify("ok","Создано","Событие добавлено");
         close();
         location.reload();
-      }catch(e){
-        notify("bad", "Ошибка", e.message);
-      }
+      }catch(e){ notify("bad","Ошибка", e.message); }
     });
   }
 
@@ -283,12 +265,10 @@ export async function renderEvents(ctx){
       try{
         const data = readEventForm(form);
         await updateEvent(evFull.id, data);
-        notify("ok", "Сохранено", "Событие обновлено");
+        notify("ok","Сохранено","Событие обновлено");
         close();
         location.reload();
-      }catch(e){
-        notify("bad", "Ошибка", e.message);
-      }
+      }catch(e){ notify("bad","Ошибка", e.message); }
     });
   }
 
@@ -307,19 +287,17 @@ export async function renderEvents(ctx){
     node.querySelector("#yes").addEventListener("click", async ()=>{
       try{
         await deleteEvent(eventId);
-        notify("warn", "Удалено", "Событие удалено");
+        notify("warn","Удалено","Событие удалено");
         close();
         location.reload();
-      }catch(e){
-        notify("bad", "Ошибка", e.message);
-      }
+      }catch(e){ notify("bad","Ошибка", e.message); }
     });
   }
 
   function openAdminAppsModal(ev){
     const node = document.createElement("div");
     node.innerHTML = `
-      <div class="muted">Тут будет информация ну или описание пока не придумал</div>
+      <div class="muted">Принятие добавляет в participants.</div>
       <div class="hr"></div>
       <table class="table">
         <thead><tr><th>Игрок</th><th>Статус</th><th>Действия</th></tr></thead>
@@ -335,16 +313,13 @@ export async function renderEvents(ctx){
         const cls = a.status === "approved" ? "ok" : a.status === "rejected" ? "bad" : "warn";
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>
-            <button class="btn small" data-open="${escapeAttr(a.uid)}">${escapeHtml(a.displayName || a.uid)}</button>
-            <div class="muted" style="font-size:12px; font-family:var(--mono);">${escapeHtml(a.uid)}</div>
-          </td>
+          <td><button class="btn small" data-open="${escapeAttr(a.uid)}" style="width:auto;">${escapeHtml(a.displayName || a.uid)}</button></td>
           <td><span class="badge ${cls}">${escapeHtml(a.status)}</span></td>
           <td>
             <div class="row">
-              <button class="btn ok small" data-ap="${escapeAttr(a.uid)}">Принять</button>
-              <button class="btn danger small" data-rj="${escapeAttr(a.uid)}">Отклонить</button>
-              <button class="btn danger small" data-delapp="${escapeAttr(a.uid)}">Удалить</button>
+              <button class="btn ok small" data-ap="${escapeAttr(a.uid)}" style="width:auto;">Принять</button>
+              <button class="btn danger small" data-rj="${escapeAttr(a.uid)}" style="width:auto;">Отклонить</button>
+              <button class="btn danger small" data-delapp="${escapeAttr(a.uid)}" style="width:auto;">Удалить</button>
             </div>
           </td>
         `;
@@ -356,28 +331,22 @@ export async function renderEvents(ctx){
           try{
             await setEventApplicationStatus(ev.id, a.uid, "approved");
             await addParticipant(ev.id, a);
-            notify("ok", "Готово", "Принят");
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+            notify("ok","Готово","Принят");
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
 
         tr.querySelector(`[data-rj="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
             await setEventApplicationStatus(ev.id, a.uid, "rejected");
-            notify("warn", "Готово", "Отклонён");
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+            notify("warn","Готово","Отклонён");
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
 
         tr.querySelector(`[data-delapp="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
             await deleteEventApplication(ev.id, a.uid);
-            notify("warn", "Удалено", "Заявка удалена");
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+            notify("warn","Удалено","Заявка удалена");
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
       }
     });

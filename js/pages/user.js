@@ -15,23 +15,18 @@ export async function renderUser(ctx){
         <div class="card-title">Профиль игрока</div>
         <div class="card-sub">Просмотр</div>
       </div>
-      <div class="row">
-        <button class="btn" id="back">Назад</button>
-      </div>
+      <button class="btn" id="back" style="width:auto;">Назад</button>
     </div>
     <div class="hr"></div>
     <div id="body"></div>
   `;
   root.appendChild(card);
 
-  card.querySelector("#back").addEventListener("click", ()=>{
-    history.back();
-  });
+  card.querySelector("#back").addEventListener("click", ()=> history.back());
 
   const body = card.querySelector("#body");
-
   if (!uid){
-    body.innerHTML = `<div class="muted">Не указан uid. Пример: #user?uid=...</div>`;
+    body.innerHTML = `<div class="muted">Не указан uid.</div>`;
     return root;
   }
 
@@ -44,7 +39,7 @@ export async function renderUser(ctx){
   body.innerHTML = `
     <div class="row">
       <div style="display:flex; gap:12px; align-items:center;">
-        <img id="ava" class="avatar" style="width:48px;height:48px;" alt="avatar" />
+        <img class="avatar" style="width:48px;height:48px;" alt="avatar" src="${escapeAttr(u.photoURL || "")}">
         <div>
           <div style="font-weight:1000; font-size:18px;">${escapeHtml(u.displayName || "Игрок")}</div>
           <div class="muted" style="font-family:var(--mono); font-size:12px; margin-top:4px;">${escapeHtml(u.uid || uid)}</div>
@@ -55,19 +50,15 @@ export async function renderUser(ctx){
     <div class="hr"></div>
     <div class="section-title">Статы</div>
   `;
-  const ava = body.querySelector("#ava");
-  ava.src = u.photoURL || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3C/svg%3E";
-
   body.appendChild(renderStatsKV(u.stats || {}));
 
-  // удобная кнопка “написать в чат” (возврат)
   const quick = document.createElement("div");
   quick.className = "card soft";
   quick.style.marginTop = "14px";
   quick.innerHTML = `
     <div class="row">
-      <div class="muted">Быстрое действие</div>
-      <button class="btn primary" id="toChat">Открыть чат</button>
+      <div class="muted">Быстро</div>
+      <button class="btn primary" id="toChat" style="width:auto;">Открыть чат</button>
     </div>
   `;
   quick.querySelector("#toChat").addEventListener("click", ()=> go("chat"));
@@ -77,7 +68,10 @@ export async function renderUser(ctx){
 }
 
 function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, m => ({
+  return String(s ?? "").replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[m]));
+}
+function escapeAttr(s){
+  return String(s ?? "").replace(/"/g, "&quot;");
 }

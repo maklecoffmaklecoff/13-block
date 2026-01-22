@@ -7,11 +7,11 @@ import {
   deleteClanApplication,
   listClanApplications,
   setClanApplicationStatus,
-  addMemberFromApplication
+  addMemberFromApplication,
+  getMyProfile
 } from "../db.js";
 import { notify } from "../notify.js";
-import { buildStatsForm, readStatsForm, renderStatsKV, openModal } from "../ui.js";
-import { validateStats } from "../validators.js";
+import { renderStatsKV, openModal } from "../ui.js";
 import { go } from "../router.js";
 
 export async function renderRoster(ctx){
@@ -21,7 +21,6 @@ export async function renderRoster(ctx){
 
   const members = await listMembers();
 
-  // TOP panels
   const top3Respect = [...members].sort((a,b)=> (b.stats?.respect ?? 0) - (a.stats?.respect ?? 0)).slice(0,3);
   const top3Energy  = [...members].sort((a,b)=> (b.stats?.energy ?? 0) - (a.stats?.energy ?? 0)).slice(0,3);
 
@@ -44,14 +43,13 @@ export async function renderRoster(ctx){
   renderTopList(topPanel.querySelector("#topR"), top3Respect, "respect");
   renderTopList(topPanel.querySelector("#topE"), top3Energy, "energy");
 
-  // Controls
   const controls = document.createElement("div");
   controls.className = "card";
   controls.innerHTML = `
     <div class="row">
       <div>
         <div class="card-title">Состав клана</div>
-        <div class="card-sub">Карточки участников • быстрый просмотр по клику</div>
+        <div class="card-sub">Клик по карточке — быстрый просмотр</div>
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
         <input class="input" id="search" placeholder="Поиск по нику${ctx.isAdmin ? " или UID" : ""}..." style="max-width:320px;" />
@@ -69,13 +67,11 @@ export async function renderRoster(ctx){
   `;
   root.appendChild(controls);
 
-  // show apply only if authed and NOT member
   let member = false;
   if (ctx.authed) member = await isMember(ctx.uid);
   const applyBtn = controls.querySelector("#applyBtn");
   if (ctx.authed && !member) applyBtn.style.display = "";
 
-  // Members list
   const membersCard = document.createElement("div");
   membersCard.className = "card";
   membersCard.innerHTML = `<div class="member-grid" id="mg"></div>`;
@@ -167,19 +163,89 @@ export async function renderRoster(ctx){
   controls.querySelector("#search").addEventListener("input", renderMembers);
   controls.querySelector("#sort").addEventListener("change", renderMembers);
 
-  // Apply modal
+  // Apply modal (Variant A)
   if (ctx.authed && !member){
     applyBtn.addEventListener("click", async ()=>{
       const myApp = await getMyClanApplication(ctx.uid);
-      openMyClanApplicationModal(ctx, myApp);
+      const node = document.createElement("div");
+      node.innerHTML = `
+        <div class="row">
+          <div>
+            <div class="section-title">Заявка в клан</div>
+            <div class="muted">Ник/фото/статы берутся из профиля</div>
+          </div>
+          <div id="status"></div>
+        </div>
+        <div class="hr"></div>
+        <div id="body"></div>
+      `;
+
+      const status = node.querySelector("#status");
+      if (!myApp) status.innerHTML = `<span class="badge warn">Нет заявки</span>`;
+      else if (myApp.status === "approved") status.innerHTML = `<span class="badge ok">Принята</span>`;
+      else if (myApp.status === "rejected") status.innerHTML = `<span class="badge bad">Отклонена</span>`;
+      else status.innerHTML = `<span class="badge warn">На рассмотрении</span>`;
+
+      const body = node.querySelector("#body");
+
+      if (!myApp){
+        body.innerHTML = `
+          <div class="muted">Перед отправкой проверь профиль: ник и статы.</div>
+          <div style="height:8px"></div>
+          <button class="btn small" id="toProfile" style="width:auto;">Открыть профиль</button>
+          <div class="hr"></div>
+          <div class="label">Комментарий (необязательно)</div>
+          <textarea class="textarea" id="comment" placeholder="Активность, время, роль..."></textarea>
+          <div class="hr"></div>
+          <button class="btn primary" id="send" style="width:auto;">Отправить заявку</button>
+        `;
+
+        const close = openModal("Заявка в клан", node);
+        body.querySelector("#toProfile").addEventListener("click", ()=> go("profile"));
+
+        body.querySelector("#send").addEventListener("click", async ()=>{
+          try{
+            const me = await getMyProfile(ctx.uid);
+            await submitClanApplication(ctx.uid, {
+              displayName: me.displayName || "Игрок",
+              photoURL: me.photoURL || "",
+              stats: me.stats || {},
+              comment: body.querySelector("#comment").value.trim()
+            });
+            notify("ok","Отправлено","Заявка отправлена");
+            close();
+            location.reload();
+          }catch(e){
+            notify("bad","Ошибка", e.message);
+          }
+        });
+      } else {
+        body.innerHTML = `
+          <div class="muted">Заявка уже есть. Можно удалить и подать заново.</div>
+          <div style="height:10px"></div>
+          <div class="row">
+            <button class="btn danger" id="del" style="width:auto;">Удалить</button>
+            <button class="btn" id="myProfile" style="width:auto;">Мой профиль</button>
+          </div>
+        `;
+        const close = openModal("Заявка в клан", node);
+        body.querySelector("#del").addEventListener("click", async ()=>{
+          try{
+            await deleteClanApplication(ctx.uid);
+            notify("warn","Удалено","Заявка удалена");
+            close();
+            location.reload();
+          }catch(e){ notify("bad","Ошибка", e.message); }
+        });
+        body.querySelector("#myProfile").addEventListener("click", ()=> go("profile"));
+      }
     });
   }
 
-  // Admin apps modal button
+  // Admin apps modal
   if (ctx.isAdmin){
     controls.querySelector("#adminApps").addEventListener("click", async ()=>{
       const apps = await listClanApplications();
-      // filter: hide those already in members
       const memberSet = new Set(members.map(m=>m.uid));
       const filtered = apps.filter(a => !memberSet.has(a.uid));
 
@@ -187,7 +253,7 @@ export async function renderRoster(ctx){
       node.innerHTML = `
         <div class="row">
           <div>
-            <div class="section-title">Админ: заявки в клан</div>
+            <div class="section-title">Админ: заявки</div>
             <div class="muted">Показаны только те, кто ещё НЕ в составе</div>
           </div>
           <span class="badge">Всего: ${filtered.length}</span>
@@ -209,148 +275,60 @@ export async function renderRoster(ctx){
         tr.innerHTML = `
           <td>
             <div style="font-weight:1000;">${escapeHtml(a.displayName || a.uid)}</div>
-            <div class="muted" style="font-size:12px; font-family:var(--mono);">${escapeHtml(a.uid)}</div>
-            <button class="btn small" data-open="${escapeAttr(a.uid)}">Профиль</button>
-            <button class="btn small" data-view="${escapeAttr(a.uid)}">Статы</button>
+            <div class="muted" style="font-family:var(--mono); font-size:12px;">${escapeHtml(a.uid)}</div>
+            <button class="btn small" data-open="${escapeAttr(a.uid)}" style="width:auto;">Профиль</button>
+            <button class="btn small" data-stats="${escapeAttr(a.uid)}" style="width:auto;">Статы</button>
           </td>
           <td><span class="badge ${cls}">${escapeHtml(a.status)}</span></td>
           <td>
             <div class="row">
-              <button class="btn ok small" data-approve="${escapeAttr(a.uid)}">Принять</button>
-              <button class="btn danger small" data-reject="${escapeAttr(a.uid)}">Отклонить</button>
-              <button class="btn danger small" data-del="${escapeAttr(a.uid)}">Удалить</button>
+              <button class="btn ok small" data-approve="${escapeAttr(a.uid)}" style="width:auto;">Принять</button>
+              <button class="btn danger small" data-reject="${escapeAttr(a.uid)}" style="width:auto;">Отклонить</button>
+              <button class="btn danger small" data-del="${escapeAttr(a.uid)}" style="width:auto;">Удалить</button>
             </div>
           </td>
         `;
         tbody.appendChild(tr);
 
         tr.querySelector(`[data-open="${a.uid}"]`).addEventListener("click", ()=> go("user", { uid: a.uid }));
-        tr.querySelector(`[data-view="${a.uid}"]`).addEventListener("click", ()=>{
+        tr.querySelector(`[data-stats="${a.uid}"]`).addEventListener("click", ()=>{
           const n = document.createElement("div");
           n.appendChild(renderStatsKV(a.stats || {}));
-          openModal(`Статы заявки: ${a.displayName || a.uid}`, n);
+          openModal("Статы из заявки", n);
         });
 
         tr.querySelector(`[data-approve="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
             await setClanApplicationStatus(a.uid, "approved");
             await addMemberFromApplication(a);
-            notify("ok", "Готово", "Принят в клан");
+            notify("ok","Готово","Принят в клан");
             close();
             location.reload();
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
 
         tr.querySelector(`[data-reject="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
             await setClanApplicationStatus(a.uid, "rejected");
-            notify("warn", "Готово", "Отклонено");
+            notify("warn","Готово","Отклонено");
             close();
             location.reload();
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
 
         tr.querySelector(`[data-del="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
             await deleteClanApplication(a.uid);
-            notify("warn", "Удалено", "Заявка удалена");
+            notify("warn","Удалено","Заявка удалена");
             close();
             location.reload();
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
       }
     });
   }
 
   return root;
-}
-
-function openMyClanApplicationModal(ctx, myApp){
-  const node = document.createElement("div");
-  node.innerHTML = `
-    <div class="row">
-      <div>
-        <div class="section-title">Заявка в клан</div>
-        <div class="muted">Одна заявка на человека (можно удалить и подать заново)</div>
-      </div>
-      <div id="status"></div>
-    </div>
-    <div class="hr"></div>
-    <div id="body"></div>
-  `;
-  const status = node.querySelector("#status");
-
-  if (!myApp) status.innerHTML = `<span class="badge warn">Нет заявки</span>`;
-  else if (myApp.status === "approved") status.innerHTML = `<span class="badge ok">Принята</span>`;
-  else if (myApp.status === "rejected") status.innerHTML = `<span class="badge bad">Отклонена</span>`;
-  else status.innerHTML = `<span class="badge warn">На рассмотрении</span>`;
-
-  const body = node.querySelector("#body");
-
-  if (!myApp){
-    const statsForm = buildStatsForm(ctx.userDoc?.stats || {});
-    body.innerHTML = `
-      <div class="label">Комментарий (необязательно)</div>
-      <textarea class="textarea" id="comment" placeholder="Активность, время, роль..."></textarea>
-      <div class="hr"></div>
-      <div class="section-title">Статы (обязательно)</div>
-      <div id="sf"></div>
-      <div class="hr"></div>
-      <div class="row">
-        <button class="btn primary" id="send" style="width:auto;">Отправить</button>
-      </div>
-    `;
-    body.querySelector("#sf").appendChild(statsForm);
-
-    const close = openModal("Заявка в клан", node);
-    body.querySelector("#send").addEventListener("click", async ()=>{
-      try{
-        const v = validateStats(readStatsForm(statsForm));
-        if (!v.ok) throw new Error(v.error);
-
-        await submitClanApplication(ctx.uid, {
-          displayName: ctx.userDoc?.displayName || "Игрок",
-          photoURL: ctx.userDoc?.photoURL || "",
-          comment: body.querySelector("#comment").value.trim(),
-          stats: v.value
-        });
-
-        notify("ok", "Отправлено", "Заявка отправлена");
-        close();
-        location.reload();
-      }catch(e){
-        notify("bad", "Ошибка", e.message);
-      }
-    });
-  } else {
-    body.innerHTML = `
-      <div class="muted">Заявка уже есть.</div>
-      <div style="height:10px"></div>
-      <div class="row">
-        <button class="btn danger" id="del" style="width:auto;">Удалить</button>
-        <button class="btn" id="myProfile" style="width:auto;">Мой профиль</button>
-      </div>
-    `;
-
-    const close = openModal("Заявка в клан", node);
-    body.querySelector("#del").addEventListener("click", async ()=>{
-      try{
-        await deleteClanApplication(ctx.uid);
-        notify("warn", "Удалено", "Заявка удалена");
-        close();
-        location.reload();
-      }catch(e){
-        notify("bad", "Ошибка", e.message);
-      }
-    });
-    body.querySelector("#myProfile").addEventListener("click", ()=> go("profile"));
-  }
 }
 
 function renderTopList(containerEl, list, mode){
@@ -369,7 +347,7 @@ function renderTopList(containerEl, list, mode){
           </div>
         </div>
       </div>
-      <button class="btn small" data-open="${escapeAttr(m.uid)}">Профиль</button>
+      <button class="btn small" data-open="${escapeAttr(m.uid)}" style="width:auto;">Профиль</button>
     `;
     containerEl.appendChild(row);
     row.querySelector(`[data-open="${m.uid}"]`).addEventListener("click", ()=> go("user", { uid: m.uid }));

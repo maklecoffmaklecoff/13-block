@@ -14,15 +14,14 @@ export async function renderHome(ctx){
   hero.className = "hero";
   hero.innerHTML = `
     <h1>${escapeHtml(info.title || "13 Блок")}</h1>
-    <p>${escapeHtml(info.about || "")}</p>
+    <p class="clamp2" style="white-space:pre-wrap;">${escapeHtml(info.about || "")}</p>
     <div class="pillbar">
-      <div class="pill">Ton Prison (13 BLOCK)</div>
-      <div class="pill">Заявка в клан</div>
-      <div class="pill">События и чат</div>
+      <div class="pill">Ton Prison (Telegram)</div>
+      <div class="pill">События и чат — для авторизованных</div>
     </div>
     <div class="row" style="margin-top:14px;">
       <div class="muted">Главная — информация и новости.</div>
-      ${ctx.isAdmin ? `<button class="btn primary" id="editHome">Редактировать</button>` : ``}
+      ${ctx.isAdmin ? `<button class="btn primary" id="editHome" style="width:auto;">Редактировать</button>` : ``}
     </div>
   `;
   root.appendChild(hero);
@@ -35,8 +34,8 @@ export async function renderHome(ctx){
   rules.innerHTML = `
     <div class="row">
       <div>
-        <div class="card-title">Правила клана</div>
-        <div class="card-sub">То, что важно соблюдать</div>
+        <div class="card-title">Правила</div>
+        <div class="card-sub">Важно соблюдать</div>
       </div>
       <span class="badge">Инфо</span>
     </div>
@@ -50,12 +49,11 @@ export async function renderHome(ctx){
     <div class="card-title">Как вступить</div>
     <div class="muted" style="white-space:pre-wrap; line-height:1.55;">
 1) Войти
-2) «Состав клана» → подать заявку
-3) Указать статы героя
+2) «Состав клана» → «Заявка в клан»
+3) Заполнить профиль (ник + статы)
 4) Дождаться решения админа
     </div>
   `;
-
   mid.append(rules, how);
   root.appendChild(mid);
 
@@ -65,9 +63,9 @@ export async function renderHome(ctx){
     <div class="row">
       <div>
         <div class="card-title">Новости</div>
-        <div class="card-sub">Объявления, планы, важные сообщения</div>
+        <div class="card-sub">Объявления, планы</div>
       </div>
-      ${ctx.isAdmin ? `<button class="btn primary" id="addNews">Добавить</button>` : ``}
+      ${ctx.isAdmin ? `<button class="btn primary" id="addNews" style="width:auto;">Добавить</button>` : ``}
     </div>
     <div class="hr"></div>
     <div id="newsList"></div>
@@ -85,10 +83,9 @@ export async function renderHome(ctx){
       item.innerHTML = `
         <div class="row">
           <div style="font-weight:1000;">${escapeHtml(n.title || "")}</div>
-          ${ctx.isAdmin ? `<button class="btn danger small" data-del="${escapeAttr(n.id)}">Удалить</button>` : ``}
+          ${ctx.isAdmin ? `<button class="btn danger small" data-del="${escapeAttr(n.id)}" style="width:auto;">Удалить</button>` : ``}
         </div>
         <div class="muted" style="margin-top:6px; white-space:pre-wrap; line-height:1.55;">${escapeHtml(n.text || "")}</div>
-        <div class="muted" style="margin-top:8px; font-size:12px;">${escapeHtml(n.createdByName || "")}</div>
       `;
       list.appendChild(item);
 
@@ -97,11 +94,9 @@ export async function renderHome(ctx){
         del.addEventListener("click", async ()=>{
           try{
             await deleteNews(n.id);
-            notify("warn", "Удалено", "Новость удалена");
+            notify("warn","Удалено","Новость удалена");
             location.reload();
-          }catch(e){
-            notify("bad", "Ошибка", e.message);
-          }
+          }catch(e){ notify("bad","Ошибка", e.message); }
         });
       }
     }
@@ -113,21 +108,21 @@ export async function renderHome(ctx){
       form.innerHTML = `
         <div class="label">Название</div>
         <input class="input" id="t" />
-        <div class="label">Описание (короткий текст в шапке)</div>
+        <div class="label">Описание</div>
         <textarea class="textarea" id="a"></textarea>
         <div class="label">Правила</div>
         <textarea class="textarea" id="r"></textarea>
         <div class="hr"></div>
         <div class="row">
-          <button class="btn" id="cancel">Отмена</button>
-          <button class="btn primary" id="save">Сохранить</button>
+          <button class="btn" id="cancel" style="width:auto;">Отмена</button>
+          <button class="btn primary" id="save" style="width:auto;">Сохранить</button>
         </div>
       `;
       form.querySelector("#t").value = info.title || "";
       form.querySelector("#a").value = info.about || "";
       form.querySelector("#r").value = info.rules || "";
 
-      const close = openModal("Редактирование главной страницы", form);
+      const close = openModal("Редактирование главной", form);
       form.querySelector("#cancel").addEventListener("click", close);
       form.querySelector("#save").addEventListener("click", async ()=>{
         try{
@@ -136,12 +131,10 @@ export async function renderHome(ctx){
             about: form.querySelector("#a").value.trim(),
             rules: form.querySelector("#r").value.trim()
           });
-          notify("ok", "Сохранено", "Главная обновлена");
+          notify("ok","Сохранено","Главная обновлена");
           close();
           location.reload();
-        }catch(e){
-          notify("bad", "Ошибка", e.message);
-        }
+        }catch(e){ notify("bad","Ошибка", e.message); }
       });
     });
 
@@ -149,13 +142,13 @@ export async function renderHome(ctx){
       const form = document.createElement("div");
       form.innerHTML = `
         <div class="label">Заголовок</div>
-        <input class="input" id="nt" placeholder="Например: Турнир завтра в 20:00" />
+        <input class="input" id="nt" />
         <div class="label">Текст</div>
-        <textarea class="textarea" id="nx" placeholder="Детали, требования, что взять..."></textarea>
+        <textarea class="textarea" id="nx"></textarea>
         <div class="hr"></div>
         <div class="row">
-          <button class="btn" id="cancel">Отмена</button>
-          <button class="btn primary" id="save">Опубликовать</button>
+          <button class="btn" id="cancel" style="width:auto;">Отмена</button>
+          <button class="btn primary" id="save" style="width:auto;">Опубликовать</button>
         </div>
       `;
       const close = openModal("Новая новость", form);
@@ -165,18 +158,18 @@ export async function renderHome(ctx){
           const title = form.querySelector("#nt").value.trim();
           const text = form.querySelector("#nx").value.trim();
           if (!title) throw new Error("Заголовок обязателен");
+
           await createNews({
             title,
             text,
             createdByUid: ctx.uid,
             createdByName: ctx.userDoc?.displayName || "Админ"
           });
-          notify("ok", "Опубликовано", "Новость добавлена");
+
+          notify("ok","Опубликовано","Новость добавлена");
           close();
           location.reload();
-        }catch(e){
-          notify("bad", "Ошибка", e.message);
-        }
+        }catch(e){ notify("bad","Ошибка", e.message); }
       });
     });
   }
@@ -185,10 +178,10 @@ export async function renderHome(ctx){
 }
 
 function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, m => ({
+  return String(s ?? "").replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[m]));
 }
 function escapeAttr(s){
-  return String(s).replace(/"/g, "&quot;");
+  return String(s ?? "").replace(/"/g, "&quot;");
 }
