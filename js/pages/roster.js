@@ -21,28 +21,30 @@ export async function renderRoster(ctx){
 
   const members = await listMembers();
 
-  const top3Respect = [...members].sort((a,b)=> (b.stats?.respect ?? 0) - (a.stats?.respect ?? 0)).slice(0,3);
-  const top3Energy  = [...members].sort((a,b)=> (b.stats?.energy ?? 0) - (a.stats?.energy ?? 0)).slice(0,3);
+  // TOP-5 Power
+  const top5Power = [...members]
+    .map(m => ({ ...m, power: calcPower(m.stats || {}) }))
+    .sort((a,b)=> (b.power ?? 0) - (a.power ?? 0))
+    .slice(0, 5);
 
   const topPanel = document.createElement("div");
-  topPanel.className = "grid two";
+  topPanel.className = "card soft";
   topPanel.innerHTML = `
-    <div class="card soft">
-      <div class="row"><div class="section-title">TOP‑3 👥 Уважение</div><span class="badge">Клан</span></div>
-      <div class="hr"></div>
-      <div id="topR"></div>
+    <div class="row">
+      <div>
+        <div class="card-title">TOP‑5 по силе 💪</div>
+        <div class="card-sub">Описание: 💪 Сила, ❤️ ХП, ⚡️ Энергия, 🛡️ Броня, 🚧 Сопротивление, 🩸 Сопротивление крови, ☠️ Сопротивление яду</div>
+      </div>
+      <span class="badge">Клан</span>
     </div>
-    <div class="card soft">
-      <div class="row"><div class="section-title">TOP‑3 ⚡️ Энергия</div><span class="badge">Клан</span></div>
-      <div class="hr"></div>
-      <div id="topE"></div>
-    </div>
+    <div class="hr"></div>
+    <div id="topP"></div>
   `;
   root.appendChild(topPanel);
 
-  renderTopList(topPanel.querySelector("#topR"), top3Respect, "respect");
-  renderTopList(topPanel.querySelector("#topE"), top3Energy, "energy");
+  renderTopPower(topPanel.querySelector("#topP"), top5Power);
 
+  // Controls
   const controls = document.createElement("div");
   controls.className = "card";
   controls.innerHTML = `
@@ -55,9 +57,10 @@ export async function renderRoster(ctx){
         <input class="input" id="search" placeholder="Поиск по нику${ctx.isAdmin ? " или UID" : ""}..." style="max-width:320px;" />
         <select class="input" id="sort" style="max-width:220px;">
           <option value="joinedAt">Сортировка: новые</option>
-          <option value="respect">Топ: уважение</option>
-          <option value="energy">Топ: энергия</option>
+          <option value="power">Топ: сила</option>
           <option value="hp">Топ: хп</option>
+          <option value="energy">Топ: энергия</option>
+          <option value="respect">Топ: уважение</option>
         </select>
         <span class="badge" id="count">Участников: ${members.length}</span>
         <button class="btn primary" id="applyBtn" style="display:none; width:auto;">Заявка в клан</button>
@@ -72,6 +75,7 @@ export async function renderRoster(ctx){
   const applyBtn = controls.querySelector("#applyBtn");
   if (ctx.authed && !member) applyBtn.style.display = "";
 
+  // Members list
   const membersCard = document.createElement("div");
   membersCard.className = "card";
   membersCard.innerHTML = `<div class="member-grid" id="mg"></div>`;
@@ -81,12 +85,14 @@ export async function renderRoster(ctx){
 
   const openQuickProfile = (m)=>{
     const node = document.createElement("div");
+    const power = calcPower(m.stats || {});
     node.innerHTML = `
       <div class="row">
         <div style="display:flex; gap:10px; align-items:center;">
           <img class="member-ava" style="width:46px;height:46px;border-radius:16px;" src="${escapeAttr(m.photoURL || "")}" alt="ava">
           <div>
             <div style="font-weight:1000; font-size:16px;">${escapeHtml(m.displayName || "Игрок")}</div>
+            <div class="muted" style="font-size:12px;">💪: <b>${formatPower(power)}</b></div>
             ${ctx.isAdmin ? `<div class="muted" style="font-family:var(--mono); font-size:12px;">${escapeHtml(m.uid)}</div>` : ``}
           </div>
         </div>
@@ -104,8 +110,11 @@ export async function renderRoster(ctx){
     const f = (controls.querySelector("#search").value || "").toLowerCase().trim();
     const sortMode = controls.querySelector("#sort").value || "joinedAt";
 
-    const sorted = [...members].sort((a,b)=>{
+    const enriched = members.map(m => ({ ...m, power: calcPower(m.stats || {}) }));
+
+    const sorted = [...enriched].sort((a,b)=>{
       if (sortMode === "joinedAt") return 0;
+      if (sortMode === "power") return (b.power ?? 0) - (a.power ?? 0);
       return Number(b.stats?.[sortMode] ?? 0) - Number(a.stats?.[sortMode] ?? 0);
     });
 
@@ -135,38 +144,37 @@ export async function renderRoster(ctx){
             <img class="member-ava" src="${escapeAttr(m.photoURL || "")}" alt="avatar" />
             <div class="member-meta">
               <div class="member-name">${escapeHtml(m.displayName || "Игрок")}</div>
+              <div class="muted" style="font-size:12px;">💪: <b>${formatPower(m.power)}</b></div>
               ${uidLine}
             </div>
-          </div>
-          <div class="member-actions">
-            <button class="btn small" data-open="${escapeAttr(m.uid)}" style="width:auto;">Профиль</button>
           </div>
         </div>
 
         <div class="member-mini">
-          hp:${m.stats?.hp ?? 0}, en:${m.stats?.energy ?? 0}, rep:${m.stats?.respect ?? 0}<br/>
-          ev:${m.stats?.evasion ?? 0}, arm:${m.stats?.armor ?? 0}, res:${m.stats?.resistance ?? 0}
+          ❤️:${m.stats?.hp ?? 0}, ⚡️:${m.stats?.energy ?? 0}, 🛡️:${m.stats?.armor ?? 0}<br/>
+          🚧:${m.stats?.resistance ?? 0}, 🩸:${m.stats?.bloodRes ?? 0}, ☠️:${m.stats?.poisonRes ?? 0}
         </div>
       `;
       mg.appendChild(el);
 
-      el.querySelector(`[data-open="${m.uid}"]`).addEventListener("click", (e)=>{
-        e.stopPropagation();
-        go("user", { uid: m.uid });
-      });
-
       el.addEventListener("click", ()=> openQuickProfile(m));
     }
   };
+  
+  function hasFilledStats(stats){
+  const keys = ["hp","energy","respect","evasion","armor","resistance","bloodRes","poisonRes"];
+  return stats && keys.every(k => Number(stats[k] ?? 0) > 0);
+	}
 
   renderMembers();
   controls.querySelector("#search").addEventListener("input", renderMembers);
   controls.querySelector("#sort").addEventListener("change", renderMembers);
 
-  // Apply modal (Variant A)
+  // Apply modal (Variant A: data from profile)
   if (ctx.authed && !member){
     applyBtn.addEventListener("click", async ()=>{
       const myApp = await getMyClanApplication(ctx.uid);
+
       const node = document.createElement("div");
       node.innerHTML = `
         <div class="row">
@@ -206,6 +214,9 @@ export async function renderRoster(ctx){
         body.querySelector("#send").addEventListener("click", async ()=>{
           try{
             const me = await getMyProfile(ctx.uid);
+			if (!hasFilledStats(me.stats)) {
+			throw new Error("Нельзя подать заявку без заполненных статов. Открой профиль и заполни статы.");
+			}
             await submitClanApplication(ctx.uid, {
               displayName: me.displayName || "Игрок",
               photoURL: me.photoURL || "",
@@ -242,7 +253,7 @@ export async function renderRoster(ctx){
     });
   }
 
-  // Admin apps modal
+  // Admin apps modal (hide members)
   if (ctx.isAdmin){
     controls.querySelector("#adminApps").addEventListener("click", async ()=>{
       const apps = await listClanApplications();
@@ -271,13 +282,14 @@ export async function renderRoster(ctx){
 
       for (const a of filtered){
         const cls = a.status === "approved" ? "ok" : a.status === "rejected" ? "bad" : "warn";
+        const power = calcPower(a.stats || {});
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>
             <div style="font-weight:1000;">${escapeHtml(a.displayName || a.uid)}</div>
+            <div class="muted" style="font-size:12px;">💪: <b>${formatPower(power)}</b></div>
             <div class="muted" style="font-family:var(--mono); font-size:12px;">${escapeHtml(a.uid)}</div>
             <button class="btn small" data-open="${escapeAttr(a.uid)}" style="width:auto;">Профиль</button>
-            <button class="btn small" data-stats="${escapeAttr(a.uid)}" style="width:auto;">Статы</button>
           </td>
           <td><span class="badge ${cls}">${escapeHtml(a.status)}</span></td>
           <td>
@@ -291,11 +303,6 @@ export async function renderRoster(ctx){
         tbody.appendChild(tr);
 
         tr.querySelector(`[data-open="${a.uid}"]`).addEventListener("click", ()=> go("user", { uid: a.uid }));
-        tr.querySelector(`[data-stats="${a.uid}"]`).addEventListener("click", ()=>{
-          const n = document.createElement("div");
-          n.appendChild(renderStatsKV(a.stats || {}));
-          openModal("Статы из заявки", n);
-        });
 
         tr.querySelector(`[data-approve="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
@@ -331,27 +338,42 @@ export async function renderRoster(ctx){
   return root;
 }
 
-function renderTopList(containerEl, list, mode){
+function calcPower(stats){
+  const armor = Number(stats.armor ?? 0);
+  const blood = Number(stats.bloodRes ?? 0);
+  const poison = Number(stats.poisonRes ?? 0);
+  const res = Number(stats.resistance ?? 0);
+  const hp = Number(stats.hp ?? 0);
+
+  const value = (armor * 2.5) + (blood * 1) + (poison * 2) + (res * 1) + (hp * 1.5);
+  return value / 10;
+}
+
+function formatPower(x){
+  const n = Number(x ?? 0);
+  return n.toFixed(1);
+}
+
+function renderTopPower(containerEl, list){
   containerEl.innerHTML = list.length ? "" : `<div class="muted">Пока пусто</div>`;
-  for (const m of list){
+  list.forEach((m, i)=>{
     const row = document.createElement("div");
     row.className = "row";
     row.style.padding = "8px 0";
     row.innerHTML = `
       <div style="display:flex; gap:10px; align-items:center;">
+        <span class="badge">#${i+1}</span>
         <img class="member-ava" style="width:34px;height:34px;border-radius:12px;" src="${escapeAttr(m.photoURL || "")}" alt="ava">
         <div>
           <div style="font-weight:1000;">${escapeHtml(m.displayName || "Игрок")}</div>
-          <div class="muted" style="font-family:var(--mono); font-size:12px;">
-            ${mode === "respect" ? `respect: ${m.stats?.respect ?? 0}` : `energy: ${m.stats?.energy ?? 0}`}
-          </div>
+          <div class="muted" style="font-family:var(--mono); font-size:12px;">💪: ${formatPower(m.power)}</div>
         </div>
       </div>
       <button class="btn small" data-open="${escapeAttr(m.uid)}" style="width:auto;">Профиль</button>
     `;
     containerEl.appendChild(row);
     row.querySelector(`[data-open="${m.uid}"]`).addEventListener("click", ()=> go("user", { uid: m.uid }));
-  }
+  });
 }
 
 function escapeHtml(s){

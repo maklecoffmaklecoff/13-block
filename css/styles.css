@@ -404,3 +404,81 @@ body{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* ===== Mobile header compact ===== */
+@media (max-width: 640px){
+  .topbar{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  /* userbox: user button + logout side-by-side */
+  #userbox{
+    display:flex;
+    gap:8px;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:nowrap;
+  }
+
+  #userbox .btn{
+    padding: 10px 10px;
+  }
+
+  #userbox .btn:first-child{
+    flex: 1;
+    min-width: 0;
+  }
+
+  #userbox .avatar{
+    width: 34px;
+    height: 34px;
+  }
+
+  #userbox .username{
+    max-width: 140px;
+    overflow:hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* hide role line on mobile */
+  #userbox .userrole{
+    display:none;
+  }
+
+  /* logout small */
+  #userbox .btn:last-child{
+    width: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px){
+  #tabsToggle{
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.statrow{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+.statpill{
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+  padding:6px 10px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background: rgba(255,255,255,0.03);
+  font-size:12px;
+}
+.statpill b{ font-family: var(--mono); font-size:12px; }
+

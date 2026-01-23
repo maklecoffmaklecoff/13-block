@@ -257,6 +257,7 @@ function renderUserbox(){
     return;
   }
 
+  // Только кликабельный "я" (ник/аватар) + кнопка выхода
   const me = document.createElement("button");
   me.className = "btn";
   me.style.display = "flex";
@@ -273,10 +274,7 @@ function renderUserbox(){
 
   const meta = document.createElement("div");
   meta.style.display = "grid";
-  meta.innerHTML = `
-    <div class="username"></div>
-    <div class="userrole"></div>
-  `;
+  meta.innerHTML = `<div class="username"></div><div class="userrole"></div>`;
   meta.querySelector(".username").textContent = state.userDoc?.displayName || state.firebaseUser?.displayName || "Игрок";
   meta.querySelector(".userrole").textContent = state.isAdmin ? "Админ" : "Пользователь";
 

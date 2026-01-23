@@ -65,10 +65,6 @@ export async function renderChat(ctx){
       <button class="btn primary" id="send" style="width:auto;">Отправить</button>
       <button class="btn" id="editLast" style="width:auto;">Редакт. последнее</button>
     </div>
-
-    <div class="muted" style="margin-top:8px; font-size:12px;">
-      UID скрыт для пользователей. Клик по имени — профиль.
-    </div>
   `;
 
   const box = card.querySelector("#chatBox");
@@ -77,17 +73,18 @@ export async function renderChat(ctx){
   const typingEl = card.querySelector("#typing");
   const searchEl = card.querySelector("#search");
 
+  // autoscroll only if user is near bottom
+  const isNearBottom = ()=>{
+    const gap = 80;
+    return (box.scrollHeight - box.scrollTop - box.clientHeight) < gap;
+  };
+
+  // reply state
   let replyTo = null;
   const replyBar = card.querySelector("#replyBar");
   const replyText = card.querySelector("#replyText");
-
   const setReply = (m)=>{
-    replyTo = {
-      msgId: m.id,
-      uid: m.uid,
-      displayName: m.displayName || "Игрок",
-      textPreview: String(m.text || "").slice(0, 120)
-    };
+    replyTo = { msgId: m.id, uid: m.uid, displayName: m.displayName || "Игрок", textPreview: String(m.text||"").slice(0,120) };
     replyText.textContent = `${replyTo.displayName}: ${replyTo.textPreview}`;
     replyBar.style.display = "";
   };
@@ -98,16 +95,87 @@ export async function renderChat(ctx){
   };
   card.querySelector("#cancelReply").addEventListener("click", clearReply);
 
-  let allMsgs = [];
-  const reactionUnsubs = new Map();
-  const reactionsCache = new Map();
+  // reaction state: keep across renders
+  const reactionUnsubs = new Map();   // msgId -> unsub
+  const reactionsCache = new Map();   // msgId -> { counts, myEmoji }
 
-  const cleanupReactions = ()=>{
-    for (const u of reactionUnsubs.values()) try{ u(); } catch(_){}
-    reactionUnsubs.clear();
-    reactionsCache.clear();
+  const ensureReactionSub = (msgId)=>{
+    if (reactionUnsubs.has(msgId)) return;
+    const unsub = listenReactions(msgId, (list)=>{
+      const counts = {};
+      let myEmoji = "";
+      for (const r of list){
+        if (!r?.emoji) continue;
+        counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+        if (r.uid === ctx.uid) myEmoji = r.emoji;
+      }
+      reactionsCache.set(msgId, { counts, myEmoji });
+
+      // update row if it exists
+      const host = box.querySelector(`[data-rx-host="${CSS.escape(msgId)}"]`);
+      if (host) renderReactionsRow(host, msgId);
+    });
+    reactionUnsubs.set(msgId, unsub);
   };
 
+  const cleanupReactionSubs = (keepIds)=>{
+    for (const [id, unsub] of reactionUnsubs.entries()){
+      if (!keepIds.has(id)){
+        try{ unsub(); }catch(_){}
+        reactionUnsubs.delete(id);
+        reactionsCache.delete(id);
+      }
+    }
+  };
+
+  function renderReactionsRow(host, msgId){
+    host.innerHTML = "";
+    const st = reactionsCache.get(msgId) || { counts:{}, myEmoji:"" };
+    for (const e of EMOJIS){
+      const c = st.counts[e] || 0;
+      const b = document.createElement("button");
+      b.className = `btn small ${st.myEmoji === e ? "primary" : ""}`.trim();
+      b.style.width = "auto";
+      b.textContent = c ? `${e} ${c}` : e;
+      b.addEventListener("click", async ()=>{
+        try{
+          const next = (st.myEmoji === e) ? "" : e;
+          await setReaction(msgId, ctx.uid, ctx.userDoc?.displayName || "Игрок", next);
+        }catch(err){
+          notify("bad","Ошибка", err.message);
+        }
+      });
+      host.appendChild(b);
+    }
+  }
+
+  function openModModal(uid){
+    const node = document.createElement("div");
+    node.innerHTML = `
+      <div class="muted">UID: <span style="font-family:var(--mono);">${escapeHtml(uid)}</span></div>
+      <div class="hr"></div>
+      <div class="row">
+        <button class="btn small" id="mute10" style="width:auto;">Мут 10м</button>
+        <button class="btn small" id="mute60" style="width:auto;">Мут 60м</button>
+        <button class="btn small" id="unmute" style="width:auto;">Размут</button>
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <button class="btn danger small" id="ban" style="width:auto;">Бан</button>
+        <button class="btn ok small" id="unban" style="width:auto;">Разбан</button>
+      </div>
+    `;
+    openModal("Модерация", node);
+
+    const now = Date.now();
+    node.querySelector("#mute10").addEventListener("click", async ()=> setChatMute(uid, new Date(now + 10*60*1000)));
+    node.querySelector("#mute60").addEventListener("click", async ()=> setChatMute(uid, new Date(now + 60*60*1000)));
+    node.querySelector("#unmute").addEventListener("click", async ()=> setChatMute(uid, null));
+    node.querySelector("#ban").addEventListener("click", async ()=> setChatBan(uid, true));
+    node.querySelector("#unban").addEventListener("click", async ()=> setChatBan(uid, false));
+  }
+
+  // pinned
   if (unsubPinned) unsubPinned();
   unsubPinned = listenPinned((p)=>{
     if (!p?.text){
@@ -123,114 +191,33 @@ export async function renderChat(ctx){
         ${ctx.isAdmin ? `<button class="btn small" id="unpin" style="width:auto;">Снять</button>` : ``}
       </div>
     `;
-    const unpin = pinnedEl.querySelector("#unpin");
-    if (unpin){
-      unpin.addEventListener("click", async ()=>{
-        try{ await setPinned({ text: "" }); notify("warn","Готово","Закреп снят"); }
-        catch(e){ notify("bad","Ошибка", e.message); }
-      });
-    }
+    pinnedEl.querySelector("#unpin")?.addEventListener("click", async ()=>{
+      await setPinned({ text: "" });
+      notify("warn","Готово","Закреп снят");
+    });
   });
 
+  // typing
   if (unsubTyping) unsubTyping();
   unsubTyping = listenTyping((list)=>{
     const alive = list.filter(x => x?.uid && x.uid !== ctx.uid).slice(0,3).map(x => x.displayName || "Игрок");
     typingEl.textContent = alive.length ? `${alive.join(", ")} печатает…` : "";
   });
 
-  const renderReactionsRow = (host, msgId)=>{
-    host.innerHTML = "";
-    const { counts, myEmoji } = reactionsCache.get(msgId) || { counts:{}, myEmoji:"" };
+  let allMsgs = [];
 
-    for (const e of EMOJIS){
-      const c = counts[e] || 0;
-      const b = document.createElement("button");
-      b.className = `btn small ${myEmoji === e ? "primary" : ""}`.trim();
-      b.style.width = "auto";
-      b.textContent = c ? `${e} ${c}` : `${e}`;
-      b.addEventListener("click", async ()=>{
-        try{
-          const next = (myEmoji === e) ? "" : e;
-          await setReaction(msgId, ctx.uid, ctx.userDoc?.displayName || "Игрок", next);
-        }catch(err){
-          notify("bad","Ошибка", err.message);
-        }
-      });
-      host.appendChild(b);
-    }
-  };
-
-  const openModModal = (uid)=>{
-    const node = document.createElement("div");
-    node.innerHTML = `
-      <div class="muted">UID: <span style="font-family:var(--mono);">${escapeHtml(uid)}</span></div>
-      <div class="hr"></div>
-
-      <div class="row">
-        <button class="btn small" id="mute10" style="width:auto;">Мут 10м</button>
-        <button class="btn small" id="mute60" style="width:auto;">Мут 60м</button>
-        <button class="btn small" id="unmute" style="width:auto;">Размут</button>
-      </div>
-
-      <div class="hr"></div>
-
-      <div class="row">
-        <button class="btn danger small" id="ban" style="width:auto;">Бан</button>
-        <button class="btn ok small" id="unban" style="width:auto;">Разбан</button>
-      </div>
-
-      <div class="hr"></div>
-      <button class="btn" id="openProfile" style="width:auto;">Открыть профиль</button>
-    `;
-    openModal("Модерация", node);
-
-    const now = Date.now();
-    node.querySelector("#mute10").addEventListener("click", async ()=>{
-      try{ await setChatMute(uid, new Date(now + 10*60*1000)); notify("warn","Готово","Мут 10 минут"); }
-      catch(e){ notify("bad","Ошибка", e.message); }
-    });
-    node.querySelector("#mute60").addEventListener("click", async ()=>{
-      try{ await setChatMute(uid, new Date(now + 60*60*1000)); notify("warn","Готово","Мут 60 минут"); }
-      catch(e){ notify("bad","Ошибка", e.message); }
-    });
-    node.querySelector("#unmute").addEventListener("click", async ()=>{
-      try{ await setChatMute(uid, null); notify("ok","Готово","Мут снят"); }
-      catch(e){ notify("bad","Ошибка", e.message); }
-    });
-
-    node.querySelector("#ban").addEventListener("click", async ()=>{
-      try{ await setChatBan(uid, true); notify("warn","Готово","Забанен"); }
-      catch(e){ notify("bad","Ошибка", e.message); }
-    });
-    node.querySelector("#unban").addEventListener("click", async ()=>{
-      try{ await setChatBan(uid, false); notify("ok","Готово","Разбанен"); }
-      catch(e){ notify("bad","Ошибка", e.message); }
-    });
-
-    node.querySelector("#openProfile").addEventListener("click", ()=> go("user", { uid }));
-  };
-
-  const render = (msgs)=>{
+  const render = ()=>{
     const q = (searchEl.value || "").toLowerCase().trim();
-    const filtered = q ? msgs.filter(m => String(m.text || "").toLowerCase().includes(q)) : msgs;
+    const filtered = q ? allMsgs.filter(m => String(m.text || "").toLowerCase().includes(q)) : allMsgs;
 
+    const keepIds = new Set(filtered.map(m=>m.id));
+    filtered.forEach(m => ensureReactionSub(m.id));
+    cleanupReactionSubs(keepIds);
+
+    const shouldStick = isNearBottom();
     box.innerHTML = "";
 
-    const visibleIds = new Set(filtered.map(m=>m.id));
-    for (const [id, unsub] of reactionUnsubs.entries()){
-      if (!visibleIds.has(id)){
-        try{ unsub(); }catch(_){}
-        reactionUnsubs.delete(id);
-        reactionsCache.delete(id);
-      }
-    }
-
     for (const m of filtered){
-      const item = document.createElement("div");
-      item.className = "card";
-      item.style.background = "rgba(255,255,255,0.04)";
-      item.style.padding = "12px";
-
       const uidLine = ctx.isAdmin
         ? `<div class="muted" style="font-family:var(--mono); font-size:12px;">${escapeHtml(m.uid || "")}</div>`
         : ``;
@@ -244,77 +231,57 @@ export async function renderChat(ctx){
         `
         : ``;
 
+      const item = document.createElement("div");
+      item.className = "card";
+      item.style.background = "rgba(255,255,255,0.04)";
+      item.style.padding = "12px";
+
       item.innerHTML = `
         <div class="row">
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <button class="btn small" data-u="${escapeAttr(m.uid)}" style="width:auto;">${escapeHtml(m.displayName || "Игрок")}</button>
             ${uidLine}
           </div>
-
-          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
             <button class="btn small" data-reply="${escapeAttr(m.id)}" style="width:auto;">Ответить</button>
             ${ctx.isAdmin ? `<button class="btn small" data-pin="${escapeAttr(m.id)}" style="width:auto;">Закреп</button>` : ``}
             ${ctx.isAdmin ? `<button class="btn danger small" data-del="${escapeAttr(m.id)}" style="width:auto;">Удалить</button>` : ``}
             ${ctx.isAdmin ? `<button class="btn small" data-mod="${escapeAttr(m.uid)}" style="width:auto;">Мод</button>` : ``}
           </div>
         </div>
-
         ${replyHtml}
         <div style="margin-top:8px; white-space:pre-wrap;">${escapeHtml(m.text || "")}</div>
-
         <div class="row" style="margin-top:10px;">
           <div class="muted" style="font-size:12px;">Реакции:</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;" id="rx-${escapeAttr(m.id)}"></div>
+          <div data-rx-host="${escapeAttr(m.id)}" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
         </div>
       `;
+
       box.appendChild(item);
 
       item.querySelector(`[data-u="${m.uid}"]`).addEventListener("click", ()=> go("user", { uid: m.uid }));
       item.querySelector(`[data-reply="${m.id}"]`).addEventListener("click", ()=> setReply(m));
 
-      if (!reactionUnsubs.has(m.id)){
-        const unsub = listenReactions(m.id, (list)=>{
-          const counts = {};
-          let myEmoji = "";
-          for (const r of list){
-            if (!r?.emoji) continue;
-            counts[r.emoji] = (counts[r.emoji] || 0) + 1;
-            if (r.uid === ctx.uid) myEmoji = r.emoji;
-          }
-          reactionsCache.set(m.id, { counts, myEmoji });
-          const host = box.querySelector(`#rx-${CSS.escape(m.id)}`);
-          if (host) renderReactionsRow(host, m.id);
-        });
-        reactionUnsubs.set(m.id, unsub);
-      }
+      const rxHost = item.querySelector(`[data-rx-host="${m.id}"]`);
+      renderReactionsRow(rxHost, m.id);
 
       if (ctx.isAdmin){
-        item.querySelector(`[data-del="${m.id}"]`)?.addEventListener("click", async ()=>{
-          try{ await deleteChatMessage(m.id); notify("warn","Удалено","Сообщение удалено"); }
-          catch(e){ notify("bad","Ошибка", e.message); }
-        });
-
-        item.querySelector(`[data-pin="${m.id}"]`)?.addEventListener("click", async ()=>{
-          try{
-            await setPinned({ text: m.text || "", pinnedByUid: ctx.uid, pinnedByName: ctx.userDoc?.displayName || "Админ" });
-            notify("ok","Готово","Сообщение закреплено");
-          }catch(e){ notify("bad","Ошибка", e.message); }
-        });
-
+        item.querySelector(`[data-del="${m.id}"]`)?.addEventListener("click", async ()=> deleteChatMessage(m.id));
+        item.querySelector(`[data-pin="${m.id}"]`)?.addEventListener("click", async ()=> setPinned({ text: m.text || "", pinnedByUid: ctx.uid, pinnedByName: ctx.userDoc?.displayName || "Админ" }));
         item.querySelector(`[data-mod="${m.uid}"]`)?.addEventListener("click", ()=> openModModal(m.uid));
       }
     }
 
-    box.scrollTop = box.scrollHeight;
+    if (shouldStick) box.scrollTop = box.scrollHeight;
   };
 
   if (unsubChat) unsubChat();
   unsubChat = listenChat((msgs)=>{
     allMsgs = msgs;
-    render(allMsgs);
+    render();
   });
 
-  searchEl.addEventListener("input", ()=> render(allMsgs));
+  searchEl.addEventListener("input", render);
 
   // typing
   let typingTimer = null;
@@ -329,7 +296,6 @@ export async function renderChat(ctx){
       const text = msg.value.trim();
       if (!text) return;
       if (text.length > 600) throw new Error("Макс 600 символов");
-
       await sendChatMessage({
         uid: ctx.uid,
         displayName: ctx.userDoc?.displayName || "Игрок",
@@ -337,7 +303,6 @@ export async function renderChat(ctx){
         text,
         replyTo: replyTo || null
       });
-
       msg.value = "";
       clearReply();
       await setTyping(ctx.uid, ctx.userDoc?.displayName || "Игрок", false).catch(()=>{});
@@ -349,11 +314,11 @@ export async function renderChat(ctx){
   card.querySelector("#send").addEventListener("click", send);
   msg.addEventListener("keydown", (e)=>{ if (e.key === "Enter") send(); });
 
+  // edit last (unchanged)
   card.querySelector("#editLast").addEventListener("click", async ()=>{
     try{
       const last = [...allMsgs].reverse().find(m => m.uid === ctx.uid);
       if (!last) throw new Error("Нет сообщений для редактирования");
-
       const node = document.createElement("div");
       node.innerHTML = `
         <div class="muted">Редактирование последнего сообщения (≈2 минуты)</div>
@@ -367,43 +332,20 @@ export async function renderChat(ctx){
       `;
       node.querySelector("#t").value = last.text || "";
       const close = openModal("Редактирование", node);
-
       node.querySelector("#cancel").addEventListener("click", close);
       node.querySelector("#save").addEventListener("click", async ()=>{
-        try{
-          const newText = node.querySelector("#t").value.trim();
-          if (!newText) throw new Error("Пустое сообщение нельзя");
-          if (newText.length > 600) throw new Error("Макс 600 символов");
-          await updateChatMessage(last.id, newText);
-          notify("ok","Готово","Обновлено");
-          close();
-        }catch(e){ notify("bad","Ошибка", e.message); }
+        const newText = node.querySelector("#t").value.trim();
+        if (!newText) throw new Error("Пустое сообщение нельзя");
+        await updateChatMessage(last.id, newText);
+        close();
       });
-    }catch(e){
-      notify("bad","Ошибка", e.message);
-    }
+    }catch(e){ notify("bad","Ошибка", e.message); }
   });
 
   if (ctx.isAdmin){
-    card.querySelector("#clear").addEventListener("click", ()=>{
-      const node = document.createElement("div");
-      node.innerHTML = `
-        <div class="muted">Удалить последние 50 сообщений?</div>
-        <div class="hr"></div>
-        <div class="row">
-          <button class="btn" id="cancel" style="width:auto;">Отмена</button>
-          <button class="btn danger" id="yes" style="width:auto;">Удалить</button>
-        </div>
-      `;
-      const close = openModal("Очистка чата", node);
-      node.querySelector("#cancel").addEventListener("click", close);
-      node.querySelector("#yes").addEventListener("click", async ()=>{
-        try{
-          await adminClearChatLastN(50);
-          notify("warn","Готово","Удалено 50 сообщений");
-          close();
-        }catch(e){ notify("bad","Ошибка", e.message); }
-      });
+    card.querySelector("#clear")?.addEventListener("click", async ()=>{
+      await adminClearChatLastN(50);
+      notify("warn","Готово","Удалено 50 сообщений");
     });
   }
 
