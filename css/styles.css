@@ -482,3 +482,565 @@ body{
 }
 .statpill b{ font-family: var(--mono); font-size:12px; }
 
+/* ===== Calculator page ===== */
+.calc-form{
+  display:grid;
+  gap:12px;
+}
+.npc-grid{
+  display:grid;
+  gap:10px;
+}
+.npc-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+}
+.npc-name{ font-weight: 1000; }
+.npc-select{ width: 90px; }
+
+.calc-result{
+  display:grid;
+  gap:10px;
+}
+.calc-stat{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px;
+  border:1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+}
+.calc-stat.highlight{
+  border-color: rgba(124,92,255,0.45);
+  background: rgba(124,92,255,0.10);
+}
+
+.support-section .donate-card{
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+}
+
+@media (max-width: 640px){
+  .npc-item{ flex-direction: column; align-items: stretch; }
+  .npc-select{ width: 100%; }
+  .calc-stat{ flex-direction: column; align-items:flex-start; }
+}
+
+/* ===== Select readability fix (dark/light themes) ===== */
+
+/* базовые цвета для контролов */
+:root{
+  --control-bg: rgba(255,255,255,0.06);
+  --control-bd: rgba(255,255,255,0.14);
+  --control-tx: rgba(255,255,255,0.92);
+
+  --menu-bg: #121418;
+  --menu-tx: rgba(255,255,255,0.92);
+  --menu-hover: rgba(124,92,255,0.18);
+  --menu-active: rgba(124,92,255,0.35);
+}
+
+body.theme-light{
+  --control-bg: rgba(0,0,0,0.05);
+  --control-bd: rgba(0,0,0,0.14);
+  --control-tx: rgba(0,0,0,0.92);
+
+  --menu-bg: #ffffff;
+  --menu-tx: rgba(0,0,0,0.92);
+  --menu-hover: rgba(124,92,255,0.14);
+  --menu-active: rgba(124,92,255,0.24);
+}
+
+/* сам select */
+select.input,
+select.npc-select,
+select{
+  background: var(--control-bg);
+  color: var(--control-tx);
+  border: 1px solid var(--control-bd);
+  outline: none;
+}
+
+/* выпадающее меню (работает в большинстве desktop браузеров) */
+select option{
+  background: var(--menu-bg);
+  color: var(--menu-tx);
+}
+
+/* на некоторых браузерах hover не работает, но active/selected иногда да */
+select option:checked{
+  background: var(--menu-active);
+  color: var(--menu-tx);
+}
+
+/* фокус на контроле */
+select:focus{
+  border-color: rgba(124,92,255,0.55);
+  box-shadow: 0 0 0 3px rgba(124,92,255,0.18);
+}
+
+/* улучшение автоподбора цветов контролов в темах */
+:root{ color-scheme: dark; }
+body.theme-light{ color-scheme: light; }
+
+/* ===== Theme variables (override) ===== */
+
+/* defaults = dark */
+:root{
+  --bg: #0b0e13;
+  --surface: rgba(255,255,255,0.06);
+  --surface2: rgba(255,255,255,0.03);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.62);
+  --border: rgba(255,255,255,0.12);
+
+  --brand: rgba(124,92,255,1);
+  --brandSoft: rgba(124,92,255,0.14);
+
+  --topbar-bg: rgba(10,12,18,0.72);
+  --topbar-bd: rgba(255,255,255,0.10);
+
+  --overlay: rgba(0,0,0,0.55);
+  --modal-bg: #0f131a;
+  --modal-bd: rgba(255,255,255,0.12);
+}
+
+/* LIGHT */
+body.theme-light{
+  --bg: #eef1f6;
+  --surface: rgba(255,255,255,0.92);
+  --surface2: rgba(255,255,255,0.70);
+  --text: rgba(10,12,18,0.92);
+  --muted: rgba(10,12,18,0.62);
+  --border: rgba(10,12,18,0.12);
+
+  --brand: rgba(124,92,255,1);
+  --brandSoft: rgba(124,92,255,0.12);
+
+  /* красивая светлая шапка */
+  --topbar-bg: rgba(255,255,255,0.75);
+  --topbar-bd: rgba(10,12,18,0.10);
+
+  /* самое важное: оверлей и модалки светлые */
+  --overlay: rgba(10,12,18,0.38);
+  --modal-bg: #ffffff;
+  --modal-bd: rgba(10,12,18,0.12);
+}
+
+/* Apply variables to layout */
+body{
+  background: var(--bg);
+  color: var(--text);
+}
+
+.muted{ color: var(--muted); }
+.badge{ border-color: var(--border); }
+
+/* Cards */
+.card{
+  background: var(--surface);
+  border-color: var(--border);
+}
+.card.soft{
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+/* Topbar */
+.topbar{
+  background: var(--topbar-bg) !important;
+  border-bottom: 1px solid var(--topbar-bd) !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Tabs and buttons should not look "dirty" in light theme */
+.tab{
+  background: rgba(0,0,0,0.06);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+body.theme-light .tab{
+  background: rgba(10,12,18,0.06);
+}
+.tab.active{
+  background: var(--brandSoft);
+  border-color: rgba(124,92,255,0.45);
+}
+
+/* Inputs */
+.input, .textarea, select.input{
+  background: rgba(0,0,0,0.10);
+  color: var(--text);
+  border-color: var(--border);
+}
+body.theme-light .input,
+body.theme-light .textarea,
+body.theme-light select.input{
+  background: rgba(10,12,18,0.04);
+}
+
+/* Modal overlay + modal */
+#modalHost{
+  background: var(--overlay) !important;
+}
+.modal{
+  background: var(--modal-bg) !important;
+  border: 1px solid var(--modal-bd) !important;
+  color: var(--text);
+}
+
+/* Make tables readable */
+.table th, .table td{
+  border-color: var(--border);
+}
+
+/* =========================================================
+   Sticky glass topbar: transparent at top, dense on scroll
+   + Hamburger menu (no emoji)
+   ========================================================= */
+
+/* Topbar base (at top) */
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  background: var(--topbar-bg) !important;
+  border-bottom: 1px solid var(--topbar-bd) !important;
+  box-shadow: none;
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  transition: background 180ms ease, backdrop-filter 180ms ease, box-shadow 180ms ease;
+}
+
+/* When scrolled: denser + stronger blur + shadow */
+.topbar.scrolled{
+  box-shadow: var(--shadowSoft);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+/* Make it more transparent at very top (especially in light theme) */
+:root{
+  --topbar-bg-top: rgba(12,14,20,0.38);
+  --topbar-bg-scrolled: rgba(12,14,20,0.62);
+}
+body.theme-light{
+  --topbar-bg-top: rgba(255,255,255,0.38);
+  --topbar-bg-scrolled: rgba(255,255,255,0.72);
+}
+.topbar{ background: var(--topbar-bg-top) !important; }
+.topbar.scrolled{ background: var(--topbar-bg-scrolled) !important; }
+
+/* ===== Hamburger button ===== */
+.hamburger{
+  display:none;              /* visible only on mobile */
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  padding: 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  cursor: pointer;
+}
+
+body.theme-light .hamburger{
+  background: rgba(12,14,20,0.06);
+}
+
+.hamburger span{
+  display:block;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.9;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+/* X animation when opened */
+.hamburger.open span:nth-child(1){ transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2){ opacity: 0; }
+.hamburger.open span:nth-child(3){ transform: translateY(-7px) rotate(-45deg); }
+
+/* ===== Mobile header layout + dropdown tabs ===== */
+@media (max-width: 860px){
+  .topbar{
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand user"
+      "menu  menu";
+    gap: 10px;
+    padding: 12px;
+    align-items: center;
+  }
+
+  .brand{ grid-area: brand; min-width:0; }
+  #userbox{ grid-area: user; display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+
+  /* show hamburger and place it in "menu" row */
+  #tabsToggle{
+    grid-area: menu;
+    display:flex;
+    width: 100%;
+  }
+  .hamburger{
+    width: 100%;
+    height: 44px;
+    border-radius: 999px;
+  }
+  .hamburger span{ width: 22px; }
+
+  /* Tabs as dropdown overlay */
+  .tabs{
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 74px;
+    z-index: 80;
+    padding: 12px;
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-bd);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    max-height: 65vh;
+    overflow: auto;
+
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .tabs.collapsed{ display:none; }
+  .tab{ width:100%; text-align:left; border-radius: 14px; }
+
+  /* compact userbox */
+  #userbox .avatar{ width: 34px; height: 34px; }
+  #userbox .userrole{ display:none; }
+  #userbox .username{
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* =========================================================
+   Glass topbar (transparent at top, dense on scroll)
+   + Mobile dropdown tabs + Hamburger
+   (под твою структуру: .topbar .brand .tabs .actions .userbox)
+   ========================================================= */
+
+/* Theme tokens used here (если у тебя уже есть — этот блок переопределит мягко) */
+:root{
+  --g-bg-top: rgba(12,14,20,0.38);
+  --g-bg-scrolled: rgba(12,14,20,0.66);
+  --g-border: rgba(255,255,255,0.12);
+  --g-shadow: 0 14px 40px rgba(0,0,0,0.28);
+  --g-shadow-soft: 0 10px 26px rgba(0,0,0,0.18);
+}
+body.theme-light{
+  --g-bg-top: rgba(255,255,255,0.42);
+  --g-bg-scrolled: rgba(255,255,255,0.78);
+  --g-border: rgba(12,14,20,0.10);
+  --g-shadow: 0 14px 40px rgba(18,22,33,0.14);
+  --g-shadow-soft: 0 10px 26px rgba(18,22,33,0.10);
+}
+
+/* ----- Topbar base (at top) ----- */
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 60;
+
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* brand | tabs | actions */
+  align-items: center;
+  gap: 14px;
+
+  padding: 12px 16px;
+
+  background: var(--g-bg-top);
+  border-bottom: 1px solid var(--g-border);
+  box-shadow: none;
+
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+
+  transition: background 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+}
+
+.topbar.scrolled{
+  background: var(--g-bg-scrolled);
+  box-shadow: var(--g-shadow-soft);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+/* Brand compact */
+.brand{ min-width: 0; display:flex; align-items:center; gap: 12px; }
+.brand-text{ min-width: 0; }
+.brand .title{ font-weight: 1000; letter-spacing: .2px; }
+.brand .subtitle{ opacity: .75; }
+
+/* Tabs desktop */
+.tabs{
+  display:flex;
+  gap: 8px;
+  align-items:center;
+  justify-content:center;
+}
+.tab{
+  border-radius: 999px;
+  padding: 10px 14px;
+  border: 1px solid var(--g-border);
+  background: rgba(255,255,255,0.06);
+}
+body.theme-light .tab{
+  background: rgba(12,14,20,0.06);
+}
+.tab.active{
+  border-color: rgba(124,92,255,0.45);
+  background: rgba(124,92,255,0.12);
+}
+
+/* Actions block */
+.actions{
+  display:flex;
+  gap: 10px;
+  align-items:center;
+  justify-content:flex-end;
+}
+
+/* ----- Hamburger ----- */
+.hamburger{
+  display: none; /* shown on mobile */
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--g-border);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  cursor: pointer;
+  padding: 10px;
+  align-items:center;
+  justify-content:center;
+  gap: 5px;
+}
+body.theme-light .hamburger{ background: rgba(12,14,20,0.06); }
+
+.hamburger span{
+  display:block;
+  width: 20px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 2px;
+  opacity: 0.9;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+.hamburger.open span:nth-child(1){ transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2){ opacity: 0; }
+.hamburger.open span:nth-child(3){ transform: translateY(-7px) rotate(-45deg); }
+
+/* ----- Mobile layout ----- */
+@media (max-width: 860px){
+  /* 2 rows:
+     row1: brand + actions
+     row2: hamburger full width
+  */
+  .topbar{
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "brand actions"
+      "menu  menu";
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .brand{ grid-area: brand; }
+  .actions{ grid-area: actions; }
+
+  #tabsToggle{
+    grid-area: menu;
+    display: flex;
+    width: 100%;
+    height: 44px;
+    border-radius: 999px;
+    justify-content:center;
+  }
+
+  /* hide tabs in row on mobile; use dropdown overlay */
+  .tabs{
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 76px;
+    z-index: 80;
+
+    padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+
+    background: rgba(15,18,25,0.92);
+    border: 1px solid var(--g-border);
+    border-radius: 18px;
+    box-shadow: var(--g-shadow);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+
+    max-height: 65vh;
+    overflow: auto;
+  }
+  body.theme-light .tabs{
+    background: rgba(255,255,255,0.92);
+  }
+
+  .tabs.collapsed{ display: none; }
+  .tab{ width: 100%; text-align: left; border-radius: 14px; }
+
+  /* userbox compact to avoid long header */
+  .userbox .userrole{ display:none; }
+  .userbox .username{
+    max-width: 120px;
+    overflow:hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .userbox .avatar{ width: 34px; height: 34px; }
+
+  /* theme select not too wide */
+  .actions .select{ max-width: 140px; }
+}
+
+
+/* Profile: small helpers */
+.kv{ display:grid; gap:10px; }
+.kv-row{ display:flex; justify-content:space-between; gap:12px; }
+.kv-k{ color: var(--muted); }
+.kv-v{ font-weight: 900; text-align:right; }
+
+.check{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.03);
+}
+body.theme-light .check{ background: rgba(12,14,20,0.03); }
+
+.check input{ transform: translateY(1px); }

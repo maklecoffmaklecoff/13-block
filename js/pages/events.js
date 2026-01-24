@@ -10,6 +10,7 @@ import { notify } from "../notify.js";
 import { openModal, renderStatsKV } from "../ui.js";
 import { validateStats } from "../validators.js";
 import { go } from "../router.js";
+import { rememberMyEvent, forgetMyEvent } from "../services/myEventsIds.js";
 
 export async function renderEvents(ctx){
   const root = document.createElement("div");
@@ -117,8 +118,9 @@ export async function renderEvents(ctx){
         btnLeave.textContent = "Выйти";
         btnLeave.addEventListener("click", async ()=>{
           try{
-            await removeParticipant(ev.id, ctx.uid);
-            notify("warn","Готово","Вы вышли из события");
+		await removeParticipant(ev.id, ctx.uid);
+		await forgetMyEvent(ev.id, ctx.uid);
+		notify("warn","Готово","Вы вышли из события");
           }catch(e){ notify("bad","Ошибка", e.message); }
         });
         meWrap.appendChild(btnLeave);
@@ -206,8 +208,9 @@ export async function renderEvents(ctx){
           if (kick){
             kick.addEventListener("click", async ()=>{
               try{
-                await removeParticipant(ev.id, p.uid);
-                notify("warn","Готово","Участник убран");
+				await removeParticipant(ev.id, p.uid);
+				await forgetMyEvent(ev.id, p.uid);
+				notify("warn","Готово","Участник убран");
               }catch(e){ notify("bad","Ошибка", e.message); }
             });
           }
@@ -329,9 +332,10 @@ export async function renderEvents(ctx){
 
         tr.querySelector(`[data-ap="${a.uid}"]`).addEventListener("click", async ()=>{
           try{
-            await setEventApplicationStatus(ev.id, a.uid, "approved");
-            await addParticipant(ev.id, a);
-            notify("ok","Готово","Принят");
+			await setEventApplicationStatus(ev.id, a.uid, "approved");
+			await addParticipant(ev.id, a);
+			await rememberMyEvent(ev.id, a.uid);
+			notify("ok","Готово","Принят");
           }catch(e){ notify("bad","Ошибка", e.message); }
         });
 

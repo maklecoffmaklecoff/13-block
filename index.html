@@ -18,13 +18,19 @@
       </div>
     </div>
 
-	  <button class="btn small" id="tabsToggle" aria-expanded="false">Меню</button>
-	  <nav class="tabs" id="tabs">
-      <button class="tab" data-route="home">Главная</button>
-      <button class="tab" data-route="roster">Состав клана</button>
-      <button class="tab" data-route="events">События</button>
-      <button class="tab authed-only" data-route="chat">Чат</button>
-      <button class="tab admin-only" data-route="admin">Админ</button>
+    <button class="hamburger" id="tabsToggle" aria-expanded="false" aria-label="Открыть меню" type="button">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab" data-route="home" type="button">Главная</button>
+      <button class="tab" data-route="roster" type="button">Состав клана</button>
+      <button class="tab" data-route="events" type="button">События</button>
+      <button class="tab authed-only" data-route="chat" type="button">Чат</button>
+      <button class="tab admin-only" data-route="admin" type="button">Админ</button>
+      <button class="tab" data-route="calculator" type="button">Калькулятор</button>
     </nav>
 
     <div class="actions">
@@ -45,9 +51,8 @@
   </main>
 
   <div id="notifyHost" class="notify-host" aria-live="polite"></div>
-
   <div id="modalHost" class="modal-host hidden"></div>
 
-  <script type="module" src="./js/app.js?v=1.07"></script>
+  <script type="module" src="./js/app.js?v=11.6"></script>
 </body>
 </html>

@@ -14,7 +14,7 @@ const state = {
 };
 
 const pagesPromise = (async ()=>{
-  const [home, roster, events, profile, chat, admin, user] = await Promise.all([
+  const [home, roster, events, profile, chat, admin, user, calculator] = await Promise.all([
     import("./pages/home.js"),
     import("./pages/roster.js"),
     import("./pages/events.js"),
@@ -22,8 +22,9 @@ const pagesPromise = (async ()=>{
     import("./pages/chat.js"),
     import("./pages/admin.js"),
     import("./pages/user.js"),
+    import("./pages/calculator.js"),
   ]);
-  return { home, roster, events, profile, chat, admin, user };
+  return { home, roster, events, profile, chat, admin, user, calculator };
 })();
 
 function applyTheme(){
@@ -212,16 +213,24 @@ function initTabsCollapse(){
   const tabs = document.getElementById("tabs");
   if (!toggle || !tabs) return;
 
+  const setOpen = (open)=>{
+    tabs.classList.toggle("collapsed", !open);
+    toggle.classList.toggle("open", open);
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.setAttribute("aria-label", open ? "Закрыть меню" : "Открыть меню");
+  };
+
+  const isMobile = ()=> window.matchMedia("(max-width: 860px)").matches;
+
   const apply = ()=>{
-    const isMobile = window.matchMedia("(max-width: 860px)").matches;
-    if (!isMobile){
+    if (!isMobile()){
       tabs.classList.remove("collapsed");
+      toggle.classList.remove("open");
       toggle.setAttribute("aria-expanded", "true");
       return;
     }
     if (!tabs.dataset.inited){
-      tabs.classList.add("collapsed");
-      toggle.setAttribute("aria-expanded", "false");
+      setOpen(false);
       tabs.dataset.inited = "1";
     }
   };
@@ -230,18 +239,34 @@ function initTabsCollapse(){
   window.addEventListener("resize", apply);
 
   toggle.addEventListener("click", ()=>{
-    const collapsed = tabs.classList.toggle("collapsed");
-    toggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    const open = tabs.classList.contains("collapsed");
+    setOpen(open);
   });
 
   tabs.addEventListener("click", (e)=>{
     const btn = e.target.closest("[data-route]");
     if (!btn) return;
-    if (window.matchMedia("(max-width: 860px)").matches){
-      tabs.classList.add("collapsed");
-      toggle.setAttribute("aria-expanded", "false");
-    }
+    if (isMobile()) setOpen(false);
   });
+
+  document.addEventListener("click", (e)=>{
+    if (!isMobile()) return;
+    const inside = e.target.closest("#tabs") || e.target.closest("#tabsToggle");
+    if (!inside) setOpen(false);
+  });
+}
+
+function initTopbarScroll(){
+  const bar = document.querySelector(".topbar");
+  if (!bar) return;
+
+  const onScroll = ()=>{
+    const y = window.scrollY || document.documentElement.scrollTop || 0;
+    bar.classList.toggle("scrolled", y > 8);
+  };
+
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
 }
 
 function renderUserbox(){
@@ -257,7 +282,6 @@ function renderUserbox(){
     return;
   }
 
-  // Только кликабельный "я" (ник/аватар) + кнопка выхода
   const me = document.createElement("button");
   me.className = "btn";
   me.style.display = "flex";
@@ -270,7 +294,7 @@ function renderUserbox(){
   const avatar = document.createElement("img");
   avatar.className = "avatar";
   avatar.alt = "avatar";
-  avatar.src = state.firebaseUser?.photoURL || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3C/svg%3E";
+  avatar.src = state.userDoc?.photoURL || state.firebaseUser?.photoURL || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='100%25' height='100%25' fill='%23222'/%3E%3C/svg%3E";
 
   const meta = document.createElement("div");
   meta.style.display = "grid";
@@ -350,6 +374,7 @@ async function renderRoute(){
     case "chat": nodePromise = pages.chat.renderChat(ctx); break;
     case "admin": nodePromise = pages.admin.renderAdmin(ctx); break;
     case "user": nodePromise = pages.user.renderUser(ctx); break;
+    case "calculator": nodePromise = pages.calculator.renderCalculator(ctx); break;
     default: location.hash = "#home"; return;
   }
 
@@ -363,6 +388,7 @@ window.addEventListener("hashchange", renderRoute);
 applyTheme();
 initTabs();
 initTabsCollapse();
+initTopbarScroll();
 
 initAuth(({ firebaseUser, userDoc })=>{
   state.firebaseUser = firebaseUser;
