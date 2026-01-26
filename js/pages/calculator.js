@@ -18,10 +18,10 @@ export async function renderCalculator(ctx){
   card.innerHTML = `
     <div class="row">
       <div>
-        <div class="card-title">🗿 Калькулятор добычи сигарет</div>
+        <div class="card-title">🚬 Калькулятор добычи сигарет</div>
         <div class="card-sub">Уважение + Добыча + Шестёрки → скорость и лимит</div>
       </div>
-      <span class="badge">v1</span>
+      <span class="badge">🚭</span>
     </div>
 
     <div class="hr"></div>

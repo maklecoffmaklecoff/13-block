@@ -152,49 +152,60 @@ export async function renderProfile(ctx) {
 
   root.appendChild(card);
   
-    const integrationCard = document.createElement("div");
+  const integrationCard = document.createElement("div");
   integrationCard.className = "card";
   integrationCard.innerHTML = `
-    <div class="row">
-      <div>
-        <div class="card-title">Интеграция</div>
-        <div class="card-sub">Мои заявки • Мои события • Статистика чата</div>
-      </div>
-      <button class="btn" id="refreshInt" style="width:auto;">Обновить</button>
-    </div>
+    <details id="intSpoiler">
+      <summary class="row" style="cursor:pointer; list-style:none;">
+        <div>
+          <div class="card-title">Интеграция</div>
+          <div class="card-sub">Мои заявки • Мои события • Статистика чата</div>
+        </div>
+        <button class="btn" id="refreshInt" style="width:auto;" type="button">Обновить</button>
+      </summary>
 
-    <div class="hr"></div>
-
-    <div class="grid two" style="align-items:start;">
-      <div class="card soft">
-        <div class="section-title">🧾 Мои заявки</div>
-        <div class="hr"></div>
-        <div id="myApps" class="muted">Загрузка…</div>
-      </div>
-
-      <div class="card soft">
-        <div class="section-title">📅 Мои события</div>
-        <div class="hr"></div>
-        <div id="myEvents" class="muted">Загрузка…</div>
-      </div>
-    </div>
-
-    <div style="height:12px;"></div>
-
-    <div class="card soft">
-      <div class="section-title">💬 Статистика чата</div>
       <div class="hr"></div>
-      <div id="chatStats" class="muted">Загрузка…</div>
-      <div class="muted" style="font-size:12px; margin-top:10px;">
-        Считается по последним сообщениям (ограничение есть для скорости).
+
+      <div class="grid two" style="align-items:start;">
+        <div class="card soft">
+          <div class="section-title">🧾 Мои заявки</div>
+          <div class="hr"></div>
+          <div id="myApps" class="muted">Загрузка…</div>
+        </div>
+
+        <div class="card soft">
+          <div class="section-title">📅 Мои события</div>
+          <div class="hr"></div>
+          <div id="myEvents" class="muted">Загрузка…</div>
+        </div>
       </div>
-    </div>
+
+      <div style="height:12px;"></div>
+
+      <div class="card soft">
+        <div class="section-title">💬 Статистика чата</div>
+        <div class="hr"></div>
+        <div id="chatStats" class="muted">Загрузка…</div>
+      </div>
+    </details>
   `;
   root.appendChild(integrationCard);
+
+  // чтобы кнопка "Обновить" не закрывала/открывала summary
+  const spoiler = integrationCard.querySelector("#intSpoiler");
+  const btnRefresh = integrationCard.querySelector("#refreshInt");
+  btnRefresh.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    renderAll();
+    // оставим спойлер открытым
+    spoiler.open = true;
+  });
 
   const $apps = integrationCard.querySelector("#myApps");
   const $events = integrationCard.querySelector("#myEvents");
   const $chat = integrationCard.querySelector("#chatStats");
+  
 
   const renderAll = async ()=>{
     // заявки
@@ -213,9 +224,9 @@ export async function renderProfile(ctx) {
       const list = await getMyEvents(ctx.uid);
       $events.innerHTML = renderMyEventsHtml(list);
       bindLeaveButtons($events, ctx.uid, async ()=> {
-        const updated = await getMyEvents(ctx.uid);
-        $events.innerHTML = renderMyEventsHtml(updated);
-        bindLeaveButtons($events, ctx.uid, null);
+      const updated = await getMyEvents(ctx.uid);
+      $events.innerHTML = renderMyEventsHtml(updated);
+      bindLeaveButtons($events, ctx.uid, null);
       });
     }catch(e){
       $events.innerHTML = `<span class="bad">Ошибка: ${escapeHtml(e.message)}</span>`;
@@ -231,8 +242,15 @@ export async function renderProfile(ctx) {
   };
 
 
-  integrationCard.querySelector("#refreshInt").addEventListener("click", renderAll);
-  await renderAll();
+let loadedOnce = false;
+
+spoiler.addEventListener("toggle", async () => {
+  if (spoiler.open && !loadedOnce) {
+    loadedOnce = true;
+    await renderAll();
+  }
+});
+
 
   
   return root;
@@ -369,9 +387,9 @@ async function openSetPasswordModal() {
         EmailAuthProvider,
         linkWithCredential,
         updateEmail
-      } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+      } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
 
-      // если у пользователя нет email (редко), обновим
+      // если у пользователя нет email (редко), обновим	
       if (!auth.currentUser.email) {
         await updateEmail(auth.currentUser, email);
       }
@@ -417,7 +435,7 @@ async function openChangePasswordModal() {
       if (!p1 || p1.length < 6) throw new Error("Пароль минимум 6 символов");
       if (p1 !== p2) throw new Error("Пароли не совпадают");
 
-      const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js");
+      const { updatePassword } = await import("https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js");
       if (!auth.currentUser) throw new Error("Нет пользователя");
       await updatePassword(auth.currentUser, p1);
 
@@ -609,11 +627,12 @@ function openEditModal(ctx) {
         photoURL: photoURL || "",
         contacts: { telegram },
         timezone,
-       availability,
+		availability,
         specialization,
         about,
         weeklyGoal,
         stats: v.value,
+		updatedAt: Date.now(),
       });
 
       notify("ok", "Сохранено", "Профиль обновлён");
@@ -766,8 +785,8 @@ function prettyStatus(s) {
 function renderAppsHtml(clanApp, eventApps) {
   const clanHtml = clanApp
     ? `
-      <div class="stat"><span>Заявка в клан</span><b>${escapeHtml(prettyStatus(clanApp.status))}</b></div>
-      <div class="stat"><span>Дата</span><b>${escapeHtml(fmtDate(clanApp.createdAt))}</b></div>
+      <div class="stat"><span>Заявка в клан: </span><b>${escapeHtml(prettyStatus(clanApp.status))}</b></div>
+      <div class="stat"><span>Дата: </span><b>${escapeHtml(fmtDate(clanApp.createdAt))}</b></div>
     `
     : `<div class="muted">Заявки в клан нет</div>`;
 
@@ -839,8 +858,8 @@ function renderChatStatsHtml(st) {
     : `<span class="muted">нет реакций</span>`;
 
   return `
-    <div class="stat"><span>Сообщений всего</span><b>${escapeHtml(String(st.total))}</b></div>
-    <div class="stat"><span>Сообщений за 7 дней</span><b>${escapeHtml(String(st.week))}</b></div>
+    <div class="stat"><span>Сообщений всего: </span><b>${escapeHtml(String(st.total))}</b></div>
+    <div class="stat"><span>Сообщений за 7 дней: </span><b>${escapeHtml(String(st.week))}</b></div>
     <div class="hr"></div>
     <div class="muted" style="font-size:12px; margin-bottom:6px;">Топ реакций</div>
     <div style="display:flex; gap:8px; flex-wrap:wrap;">${top}</div>

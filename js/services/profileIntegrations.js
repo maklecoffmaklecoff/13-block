@@ -15,7 +15,7 @@ import {
   arrayUnion,
   collectionGroup,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 const CFG = {
   users: { collection: "users", myEventIdsField: "myEventIds" },
@@ -48,54 +48,58 @@ const CFG = {
 /* ---------------- Clan application ---------------- */
 
 export async function getClanApplication(uid) {
-  const q = query(
-    collection(db, CFG.clanApplications.collection),
-    where(CFG.clanApplications.uidField, "==", uid),
-    orderBy(CFG.clanApplications.createdAtField, "desc"),
-    limit(1)
-  );
+  const ref = doc(db, CFG.clanApplications.collection, uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
 
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-
-  const d = snap.docs[0];
-  const data = d.data();
+  const data = snap.data();
   return {
-    id: d.id,
+    id: snap.id,
     status: data[CFG.clanApplications.statusField] || "unknown",
     createdAt: data[CFG.clanApplications.createdAtField] || null,
   };
 }
 
+
 /* ---------------- Event applications (subcollection) ---------------- */
 
 export async function getMyEventApplications(uid) {
-  const q = query(
-    collectionGroup(db, CFG.events.applicationsSubcol),
-    where("uid", "==", uid),
+  // Без collectionGroup, чтобы не ловить permission-denied на rules.
+  // Берём последние события и проверяем наличие заявки в каждом.
+  const evQ = query(
+    collection(db, CFG.events.collection),
     orderBy("createdAt", "desc"),
-    limit(30)
+    limit(100)
   );
+  const evSnap = await getDocs(evQ);
 
-  const snap = await getDocs(q);
   const out = [];
 
-  for (const d of snap.docs) {
-    const data = d.data();
-    const eventId = parentEventIdFromDocRef(d.ref);
-    const ev = await getEventMeta(eventId);
+  for (const evDoc of evSnap.docs) {
+    const eventId = evDoc.id;
+
+    // пробуем получить МОЮ заявку как документ events/{eventId}/applications/{uid}
+    const appRef = doc(db, CFG.events.collection, eventId, CFG.events.applicationsSubcol, uid);
+    const appSnap = await getDoc(appRef);
+    if (!appSnap.exists()) continue;
+
+    const app = appSnap.data();
+    const ev = evDoc.data();
 
     out.push({
       eventId,
-      status: data.status || "pending",
-      createdAt: data.createdAt || null,
-      title: ev?.title || "Событие",
-      date: ev?.date || null,
+      status: app.status || "pending",
+      createdAt: app.createdAt || null,
+      title: pickFirst(ev, CFG.events.titleFieldCandidates) || "Событие",
+      date: pickFirst(ev, CFG.events.dateFieldCandidates) || null,
     });
   }
 
-  return out;
+  // сортируем по createdAt заявки
+  out.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+  return out.slice(0, 30);
 }
+
 
 /* ---------------- My events (fast: users.myEventIds) ---------------- */
 

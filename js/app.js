@@ -355,32 +355,53 @@ async function renderRoute(){
   const page = document.getElementById("page");
   showLoading(page);
 
-  const ctx = {
-    authed: state.authed,
-    uid: state.uid,
-    userDoc: state.userDoc,
-    isAdmin: state.isAdmin,
-    q
-  };
+const ctx = {
+  authed: state.authed,
+  uid: state.uid,
+  firebaseUser: state.firebaseUser, // нужно для profile.js (photoURL и т.п.)
+  userDoc: state.userDoc,
+  isAdmin: state.isAdmin,
+  q
+};
+
 
   const pages = await pagesPromise;
 
   let nodePromise;
-  switch(route){
-    case "home": nodePromise = pages.home.renderHome(ctx); break;
-    case "roster": nodePromise = pages.roster.renderRoster(ctx); break;
-    case "events": nodePromise = pages.events.renderEvents(ctx); break;
-    case "profile": nodePromise = pages.profile.renderProfile(ctx); break;
-    case "chat": nodePromise = pages.chat.renderChat(ctx); break;
-    case "admin": nodePromise = pages.admin.renderAdmin(ctx); break;
-    case "user": nodePromise = pages.user.renderUser(ctx); break;
-    case "calculator": nodePromise = pages.calculator.renderCalculator(ctx); break;
-    default: location.hash = "#home"; return;
+  switch (route) {
+    case "home":
+      nodePromise = pages.home.renderHome(ctx);
+      break;
+    case "roster":
+      nodePromise = pages.roster.renderRoster(ctx);
+      break;
+    case "events":
+      nodePromise = pages.events.renderEvents(ctx);
+      break;
+    case "chat":
+      nodePromise = pages.chat.renderChat(ctx);
+      break;
+    case "admin":
+      nodePromise = pages.admin.renderAdmin(ctx);
+      break;
+    case "calculator":
+      nodePromise = pages.calculator.renderCalculator(ctx);
+      break;
+    case "profile":
+      nodePromise = pages.profile.renderProfile({ ...ctx, isOwner: true });
+      break;
+    case "user":
+      nodePromise = pages.user.renderUser(ctx);
+      break;
+    default:
+      nodePromise = pages.home.renderHome(ctx);
+      break;
   }
 
   const node = await nodePromise;
   page.innerHTML = "";
   page.appendChild(node);
+
 }
 
 window.addEventListener("hashchange", renderRoute);

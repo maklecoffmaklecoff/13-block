@@ -3,7 +3,7 @@ import {
   doc, getDoc, setDoc, updateDoc, serverTimestamp,
   collection, addDoc, getDocs, query, orderBy, limit, where,
   onSnapshot, deleteDoc, runTransaction,
-  writeBatch
+  writeBatch, increment
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 import { db } from "./firebase.js";
 
@@ -172,9 +172,17 @@ export async function createEvent(payload){
   const ref = await addDoc(collection(db, "events"), {
     title: payload.title,
     desc: payload.desc || "",
+    startAt: payload.startAt || null,
+	endAt: payload.endAt || null,
+	link: payload.link || "",
+	isClosed: !!payload.isClosed,
+	archived: false,
     requirements: payload.requirements || { hp:0, energy:0, respect:0, evasion:0, armor:0, resistance:0, bloodRes:0, poisonRes:0 },
     capacity: Number(payload.capacity ?? 10),
     autoApprove: !!payload.autoApprove,
+
+    participantsCount: 0,
+
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
@@ -202,14 +210,25 @@ export async function getMyEventApplication(eventId, uid){
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
+
 export function listenEventApplications(eventId, cb){
-  const qy = query(collection(db, "events", eventId, "applications"), orderBy("createdAt", "desc"), limit(200));
+  const qy = query(
+    collection(db, "events", eventId, "applications"),
+    orderBy("createdAt", "desc"),
+    limit(200)
+  );
   return onSnapshot(qy, (snap)=> cb(snap.docs.map(d=>({ id:d.id, ...d.data() }))));
 }
+
 export function listenEventParticipants(eventId, cb){
-  const qy = query(collection(db, "events", eventId, "participants"), orderBy("joinedAt", "asc"), limit(500));
+  const qy = query(
+    collection(db, "events", eventId, "participants"),
+    orderBy("joinedAt", "asc"),
+    limit(500)
+  );
   return onSnapshot(qy, (snap)=> cb(snap.docs.map(d=>({ id:d.id, ...d.data() }))));
 }
+
 export async function submitEventApplication(eventId, uid, payload){
   const ref = doc(db, "events", eventId, "applications", uid);
   const snap = await getDoc(ref);
@@ -222,52 +241,158 @@ export async function submitEventApplication(eventId, uid, payload){
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   });
+}
 
-  // auto-approve if enabled and capacity allows
+export async function deleteEventApplication(eventId, uid){
+  await deleteDoc(doc(db, "events", eventId, "applications", uid));
+}
+
+export async function setEventApplicationStatus(eventId, uid, status){
+  await updateDoc(doc(db, "events", eventId, "applications", uid), { status, updatedAt: serverTimestamp() });
+}
+
+/* Participants (with participantsCount) */
+export async function addParticipant(eventId, appData){
   const evRef = doc(db, "events", eventId);
+  const partRef = doc(db, "events", eventId, "participants", appData.uid);
+
+  await runTransaction(db, async (tx)=>{
+    const evSnap = await tx.get(evRef);
+    if (!evSnap.exists()) throw new Error("Событие не найдено");
+
+    const ev = evSnap.data();
+    const cap = Number(ev.capacity ?? 0);
+    const current = Number(ev.participantsCount ?? 0);
+
+    const pSnap = await tx.get(partRef);
+    if (pSnap.exists()) return; // уже участник
+
+    if (current >= cap) throw new Error("Нет свободных мест");
+
+    tx.set(partRef, {
+      uid: appData.uid,
+      displayName: appData.displayName || "Игрок",
+      stats: appData.stats || {},
+      joinedAt: serverTimestamp()
+    }, { merge:true });
+
+    tx.update(evRef, {
+      participantsCount: increment(1),
+      updatedAt: serverTimestamp()
+    });
+  });
+}
+
+export async function removeParticipant(eventId, uid){
+  const evRef = doc(db, "events", eventId);
+  const partRef = doc(db, "events", eventId, "participants", uid);
+
   await runTransaction(db, async (tx)=>{
     const evSnap = await tx.get(evRef);
     if (!evSnap.exists()) return;
+
+    const pSnap = await tx.get(partRef);
+    if (!pSnap.exists()) return;
+
+    tx.delete(partRef);
+
+    const current = Number(evSnap.data().participantsCount ?? 0);
+    if (current > 0){
+      tx.update(evRef, {
+        participantsCount: increment(-1),
+        updatedAt: serverTimestamp()
+      });
+    } else {
+      tx.update(evRef, { updatedAt: serverTimestamp() });
+    }
+  });
+}
+
+/**
+ * Автозапись (если autoApprove включён).
+ * Создаёт/обновляет заявку до approved и добавляет участника (если есть места).
+ */
+export async function joinEventAuto(eventId, uid, payload){
+  const evRef = doc(db, "events", eventId);
+  const appRef = doc(db, "events", eventId, "applications", uid);
+  const partRef = doc(db, "events", eventId, "participants", uid);
+
+  await runTransaction(db, async (tx)=>{
+    const evSnap = await tx.get(evRef);
+    if (!evSnap.exists()) throw new Error("Событие не найдено");
     const ev = evSnap.data();
-    if (!ev.autoApprove) return;
 
-    // count participants (simple, may be limited but ok for small scale)
-    const partCol = collection(db, "events", eventId, "participants");
-    const partSnap = await getDocs(query(partCol, limit(1000)));
-    const current = partSnap.size;
-    if (current >= Number(ev.capacity ?? 0)) return;
+    if (!ev.autoApprove) throw new Error("Автозапись отключена");
 
-    const appSnap = await tx.get(ref);
-    if (!appSnap.exists()) return;
-    if (appSnap.data().status !== "pending") return;
+    const cap = Number(ev.capacity ?? 0);
+    const current = Number(ev.participantsCount ?? 0);
+    if (current >= cap) throw new Error("Нет свободных мест");
 
-    tx.update(ref, { status: "approved", updatedAt: serverTimestamp() });
-    tx.set(doc(db, "events", eventId, "participants", uid), {
+    const pSnap = await tx.get(partRef);
+    if (pSnap.exists()) return; // уже участник
+
+    const aSnap = await tx.get(appRef);
+    if (!aSnap.exists()){
+      tx.set(appRef, {
+        uid,
+        status: "approved",
+        ...payload,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    } else {
+      tx.update(appRef, { status: "approved", updatedAt: serverTimestamp() });
+    }
+
+    tx.set(partRef, {
       uid,
       displayName: payload.displayName || "Игрок",
       stats: payload.stats || {},
       joinedAt: serverTimestamp()
     }, { merge:true });
+
+    tx.update(evRef, {
+      participantsCount: increment(1),
+      updatedAt: serverTimestamp()
+    });
   });
 }
-export async function deleteEventApplication(eventId, uid){
-  await deleteDoc(doc(db, "events", eventId, "applications", uid));
-}
-export async function setEventApplicationStatus(eventId, uid, status){
-  await updateDoc(doc(db, "events", eventId, "applications", uid), { status, updatedAt: serverTimestamp() });
-}
-export async function addParticipant(eventId, appData){
-  await setDoc(doc(db, "events", eventId, "participants", appData.uid), {
-    uid: appData.uid,
-    displayName: appData.displayName || "Игрок",
-    stats: appData.stats || {},
-    joinedAt: serverTimestamp()
-  }, { merge:true });
-}
-export async function removeParticipant(eventId, uid){
-  await deleteDoc(doc(db, "events", eventId, "participants", uid));
+
+
+/* Waitlist (event queue) */
+export async function getMyWaitlist(eventId, uid){
+  const ref = doc(db, "events", eventId, "waitlist", uid);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
 }
 
+export function listenWaitlist(eventId, cb){
+  const qy = query(collection(db, "events", eventId, "waitlist"), orderBy("createdAt", "asc"), limit(500));
+  return onSnapshot(qy, (snap)=> cb(snap.docs.map(d=>({ id:d.id, ...d.data() }))));
+}
+
+export async function joinWaitlist(eventId, uid, payload){
+  const ref = doc(db, "events", eventId, "waitlist", uid);
+  const snap = await getDoc(ref);
+  if (snap.exists()) return;
+
+  await setDoc(ref, {
+    uid,
+    ...payload,
+    status: "waiting",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+}
+
+export async function leaveWaitlist(eventId, uid){
+  await deleteDoc(doc(db, "events", eventId, "waitlist", uid));
+}
+
+
+export async function archiveEvent(eventId, archived){
+  await updateDoc(doc(db, "events", eventId), { archived: !!archived, updatedAt: serverTimestamp() });
+}
 /* Chat */
 export async function sendChatMessage(payload){
   await addDoc(collection(db, "chatMessages"), { ...payload, createdAt: serverTimestamp() });

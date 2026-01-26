@@ -1044,3 +1044,665 @@ body.theme-light .hamburger{ background: rgba(12,14,20,0.06); }
 body.theme-light .check{ background: rgba(12,14,20,0.03); }
 
 .check input{ transform: translateY(1px); }
+
+
+/* ===== Events card layout ===== */
+.event-card .event-head{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+
+.event-card .event-title{
+  font-weight:1000;
+  font-size:16px;
+}
+
+.event-card .event-desc{
+  margin-top:6px;
+  white-space:pre-wrap;
+}
+
+.event-card .event-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:10px;
+  align-items:center;
+}
+
+.event-card .event-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  align-items:center;
+}
+
+.event-card .event-actions .btn{
+  width:auto; /* не растягиваем */
+}
+
+.event-card .event-actions .btn.small{
+  padding: 8px 10px;
+  border-radius: 12px;
+}
+
+.event-card .event-divider{
+  height:1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+/* Group chips: make them smaller than buttons */
+.event-card .badge{
+  padding: 6px 10px;
+  font-weight:900;
+}
+
+/* Primary action emphasis */
+.event-card .btn.primary{
+  border-radius: 14px;
+}
+
+/* Secondary actions: more subtle */
+.event-card .btn.ghost{
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.event-card .btn.ghost:hover{
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+}
+
+/* Collapsible admin actions */
+.event-admin{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  margin-top:8px;
+}
+.event-admin details{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  border-radius: 14px;
+  padding: 8px 10px;
+}
+.event-admin summary{
+  cursor:pointer;
+  font-weight:900;
+  color: var(--muted);
+  list-style:none;
+}
+.event-admin summary::-webkit-details-marker{ display:none; }
+
+/* Mobile: stack cleanly */
+@media (max-width: 640px){
+  .event-card .event-actions{
+    justify-content:stretch;
+  }
+  .event-card .event-actions .btn{
+    flex: 1;
+  }
+  .event-card .event-meta{
+    gap:6px;
+  }
+  .event-admin{
+    justify-content:stretch;
+  }
+  .event-admin details{
+    width:100%;
+  }
+}
+
+/* =========================
+   Events: prettier UI
+   ========================= */
+
+:root{
+  --shadowSoft: 0 10px 26px rgba(0,0,0,0.18);
+  --chipBg: rgba(255,255,255,0.06);
+  --chipBg2: rgba(255,255,255,0.04);
+}
+
+/* Card itself */
+.event-card{
+  padding: 16px;
+  border-radius: 18px;
+}
+
+/* Two-column head: left = content, right = actions */
+.event-card .event-head{
+  display:grid;
+  grid-template-columns: 1fr auto;
+  gap: 14px;
+  align-items:start;
+}
+
+@media (max-width: 760px){
+  .event-card .event-head{
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Title + description */
+.event-card .event-title{
+  font-weight:1000;
+  font-size:18px;
+  letter-spacing:0.1px;
+}
+.event-card .event-desc{
+  margin-top:6px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* Meta chips */
+.event-card .event-meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.event-card .badge{
+  background: var(--chipBg);
+  border-color: var(--border);
+  padding: 6px 10px;
+  font-weight: 900;
+  font-size: 12px;
+}
+.event-card .badge.ok{ background: rgba(33,197,93,0.12); border-color: rgba(33,197,93,0.35); }
+.event-card .badge.warn{ background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.35); }
+.event-card .badge.bad{ background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.35); }
+
+/* Right side: actions */
+.event-card .event-side{
+  display:grid;
+  gap: 10px;
+  justify-items:end;
+  min-width: 280px;
+}
+
+@media (max-width: 760px){
+  .event-card .event-side{
+    min-width: 0;
+    justify-items:stretch;
+  }
+}
+
+/* Action rows */
+.event-card .event-actions{
+  display:flex;
+  gap: 8px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+@media (max-width: 760px){
+  .event-card .event-actions{
+    justify-content:stretch;
+  }
+}
+
+/* Buttons: more compact + consistent */
+.event-card .event-actions .btn{
+  width:auto;
+  padding: 9px 12px;
+  border-radius: 14px;
+}
+@media (max-width: 760px){
+  .event-card .event-actions .btn{
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Ghost buttons for secondary controls */
+.btn.ghost{
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+}
+.btn.ghost:hover{
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+}
+
+/* Primary call-to-action */
+.event-card .btn.primary{
+  box-shadow: 0 12px 30px rgba(124,92,255,0.18);
+}
+
+/* Divider */
+.event-card .event-divider{
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0;
+}
+
+/* Admin menu (compact) */
+.event-admin{
+  display:flex;
+  justify-content:flex-end;
+}
+.event-admin .admin-menu{
+  position: relative;
+}
+.event-admin .admin-pop{
+  position:absolute;
+  right:0;
+  top: 44px;
+  z-index: 90;
+  width: 220px;
+  border: 1px solid var(--border);
+  background: rgba(10,14,20,0.92);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  box-shadow: var(--shadowSoft);
+  padding: 10px;
+  display:none;
+}
+body.theme-light .event-admin .admin-pop{
+  background: rgba(255,255,255,0.92);
+}
+.event-admin .admin-pop.open{ display:block; }
+.event-admin .admin-pop .btn{
+  width:100%;
+  justify-content:flex-start;
+  text-align:left;
+}
+
+/* Make meta + actions feel grouped */
+.event-card .event-left{
+  padding-right: 6px;
+}
+.event-card .event-side{
+  padding-left: 6px;
+  border-left: 1px dashed rgba(255,255,255,0.10);
+}
+body.theme-light .event-card .event-side{
+  border-left-color: rgba(10,12,18,0.12);
+}
+@media (max-width: 760px){
+  .event-card .event-side{
+    border-left: none;
+    padding-left: 0;
+  }
+}
+
+/* Slight hover lift */
+.event-card{
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.event-card:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--shadowSoft);
+}
+
+/* ===== Events: kebab menu + mini progress ===== */
+
+.event-card .kebab{
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 1000;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+body.theme-light .event-card .kebab{
+  background: rgba(10,12,18,0.04);
+}
+
+.event-card .menu-pop{
+  position:absolute;
+  right:0;
+  top: 52px;
+  z-index: 90;
+  width: 240px;
+  border: 1px solid var(--border);
+  background: rgba(10,14,20,0.92);
+  backdrop-filter: blur(14px);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  display:none;
+}
+body.theme-light .event-card .menu-pop{
+  background: rgba(255,255,255,0.92);
+}
+
+.event-card .menu-pop.open{ display:block; }
+.event-card .menu-pop .btn{
+  width:100%;
+  text-align:left;
+  justify-content:flex-start;
+}
+
+/* Progress */
+.event-card .pwrap{
+  margin-top: 10px;
+  display:grid;
+  gap:6px;
+}
+.event-card .pline{
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  overflow:hidden;
+}
+body.theme-light .event-card .pline{
+  background: rgba(10,12,18,0.05);
+}
+
+.event-card .pfill{
+  height: 100%;
+  width: 0%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, rgba(124,92,255,0.85), rgba(34,211,238,0.55));
+  transition: width 160ms ease;
+}
+
+.event-card .pmeta{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:12px;
+  color: var(--muted);
+}
+.event-card .pmeta b{
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 900;
+}
+
+/* ===== Events: right-side requirements + better menu ===== */
+
+.event-card .event-side{
+  position: relative;
+  z-index: 5; /* чтобы меню было над соседними карточками */
+}
+
+.event-card .req-mini{
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  padding: 10px;
+}
+
+body.theme-light .event-card .req-mini{
+  background: rgba(10,12,18,0.03);
+}
+
+.event-card .req-mini .t{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  font-weight: 1000;
+  font-size: 13px;
+}
+
+.event-card .req-mini .grid{
+  margin-top: 10px;
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.event-card .req-mini .chip{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px;
+  padding: 8px 10px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.event-card .req-mini .chip b{
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 1000;
+}
+.event-card .req-mini .chip.ok{
+  border-color: rgba(33,197,93,0.35);
+  background: rgba(33,197,93,0.10);
+}
+.event-card .req-mini .chip.bad{
+  border-color: rgba(239,68,68,0.35);
+  background: rgba(239,68,68,0.10);
+}
+
+/* Menu pop: wider + fixed min width + not tiny */
+.event-card .menu-pop{
+  width: 260px;
+  min-width: 260px;
+  padding: 10px;
+  border-radius: 18px;
+  z-index: 100; /* над всем списком */
+}
+
+/* Big link button in menu */
+.event-card .menu-pop .btn.linkbig{
+  background: linear-gradient(135deg, rgba(124,92,255,0.9), rgba(34,211,238,0.55));
+  border-color: transparent;
+  color: var(--text);
+  font-weight: 1000;
+  padding: 11px 12px;
+  border-radius: 14px;
+}
+
+/* Make admin section compact */
+.event-card .menu-pop .admin-title{
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 6px 0 6px;
+}
+
+/* Keep menu stable on hover/click */
+.event-card .menu-pop, .event-card .menu-pop *{
+  pointer-events: auto;
+}
+
+/* Smaller link button in kebab menu */
+.event-card .menu-pop .btn.linksmall{
+  font-weight: 900;
+  padding: 8px 10px;
+  border-radius: 12px;
+  opacity: 0.95;
+}
+
+/* Make modal wider when content asks for it */
+#modalHost .modal{
+  max-width: min(1200px, calc(100vw - 24px));
+  width: 100%;
+}
+
+/* Left column: title + scrollable/clamped desc + pinned footer (meta+progress) */
+.event-card .event-left{
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 10px;
+  min-height: 220px; /* можно увеличить/уменьшить под твой дизайн */
+}
+
+.event-card .event-desc-wrap{
+  min-height: 0; /* важно для grid, чтобы внутренний блок мог сжиматься */
+}
+
+.event-card .event-desc{
+  line-height: 1.55;
+}
+
+/* When description is expanded - don't push footer; allow scrolling instead */
+.event-card .event-desc:not(.clamp2){
+  max-height: 140px;       /* фиксируем, чтобы низ не уезжал */
+  overflow: auto;
+  padding-right: 6px;      /* чтобы скролл не налезал на текст */
+}
+
+/* Optional: nicer scrollbar */
+.event-card .event-desc:not(.clamp2)::-webkit-scrollbar{ width: 10px; }
+.event-card .event-desc:not(.clamp2)::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.10);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+/* ===== Roster improvements ===== */
+.roster-controls{
+  position: sticky;
+  top: 74px;              /* если topbar другой высоты — подгони */
+  z-index: 20;
+  backdrop-filter: blur(12px);
+}
+
+.member-mini.statgrid,
+.roster-app-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+
+.statpill{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: var(--muted);
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.statpill b{
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 1000;
+}
+
+.roster-app-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* ===== Roster: sticky + pills + admin apps ===== */
+.roster-controls{
+  position: sticky;
+  top: 74px;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+}
+
+.member-mini.statgrid,
+.roster-app-stats{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+
+.statpill{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  border-radius: 14px;
+  padding: 7px 9px;
+  font-size: 12px;
+  color: var(--muted);
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.statpill b{
+  color: var(--text);
+  font-family: var(--mono);
+  font-weight: 1000;
+}
+
+.roster-app-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* ===== Roster toolbar alignment fix ===== */
+.roster-controls{
+  position: sticky;
+  top: 74px;
+  z-index: 20;
+  backdrop-filter: blur(12px);
+}
+
+/* Title + controls spacing */
+.roster-head{
+  display: grid;
+  gap: 12px;
+}
+
+/* Main toolbar row: search | sort | view | actions */
+.roster-toolbar{
+  display: grid;
+  grid-template-columns: 1.3fr 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.roster-toolbar .input{
+  width: 100%;
+  max-width: none !important;
+}
+
+/* Actions block on the right */
+.roster-actions{
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Filters row: seg on left, shown+refresh on right */
+.roster-filters{
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.roster-right{
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Responsive: stack nicely on small screens */
+@media (max-width: 820px){
+  .roster-toolbar{
+    grid-template-columns: 1fr;
+  }
+  .roster-filters{
+    grid-template-columns: 1fr;
+  }
+  .roster-right{
+    justify-content: flex-start;
+  }
+}

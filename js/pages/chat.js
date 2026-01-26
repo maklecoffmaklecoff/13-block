@@ -17,6 +17,11 @@ let unsubChat = null;
 let unsubPinned = null;
 let unsubTyping = null;
 
+// reactions: keep across renders + cleanup on route leave
+let reactionUnsubs = new Map(); // msgId -> unsub
+let reactionsCache = new Map(); // msgId -> { counts, myEmoji }
+
+
 const EMOJIS = ["👍","🔥","😂","😡"];
 
 export async function renderChat(ctx){
@@ -95,9 +100,6 @@ export async function renderChat(ctx){
   };
   card.querySelector("#cancelReply").addEventListener("click", clearReply);
 
-  // reaction state: keep across renders
-  const reactionUnsubs = new Map();   // msgId -> unsub
-  const reactionsCache = new Map();   // msgId -> { counts, myEmoji }
 
   const ensureReactionSub = (msgId)=>{
     if (reactionUnsubs.has(msgId)) return;
@@ -360,7 +362,15 @@ export function cleanupChat(){
   unsubChat = null;
   unsubPinned = null;
   unsubTyping = null;
+
+  // cleanup reaction listeners
+  for (const [, unsub] of reactionUnsubs.entries()){
+    try{ unsub(); }catch(_){}
+  }
+  reactionUnsubs = new Map();
+  reactionsCache = new Map();
 }
+
 
 function escapeHtml(s){
   return String(s ?? "").replace(/[&<>"']/g, m => ({
