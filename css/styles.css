@@ -1706,3 +1706,13 @@ body.theme-light .event-card .req-mini{
     justify-content: flex-start;
   }
 }
+
+
+/* Roster: disable sticky on mobile to avoid "fixed window" feel */
+@media (max-width: 820px){
+  .roster-controls{
+    position: static;
+    top: auto;
+    backdrop-filter: none;
+  }
+}
