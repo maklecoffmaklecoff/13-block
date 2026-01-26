@@ -1566,7 +1566,7 @@ body.theme-light .event-card .req-mini{
 
 /* ===== Roster improvements ===== */
 .roster-controls{
-  position: sticky;
+  position: static;
   top: 74px;              /* если topbar другой высоты — подгони */
   z-index: 20;
   backdrop-filter: blur(12px);
@@ -1605,7 +1605,7 @@ body.theme-light .event-card .req-mini{
 
 /* ===== Roster: sticky + pills + admin apps ===== */
 .roster-controls{
-  position: sticky;
+  position: static;
   top: 74px;
   z-index: 20;
   backdrop-filter: blur(12px);
@@ -1644,7 +1644,7 @@ body.theme-light .event-card .req-mini{
 
 /* ===== Roster toolbar alignment fix ===== */
 .roster-controls{
-  position: sticky;
+  position: static;
   top: 74px;
   z-index: 20;
   backdrop-filter: blur(12px);
