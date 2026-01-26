@@ -49,7 +49,12 @@ export async function getMyProfile(uid){
   return u;
 }
 
+export async function touchUserActivity(uid){
+  await updateDoc(doc(db, "users", uid), { lastSeenAt: serverTimestamp() });
+}
+
 export async function updateUserProfile(uid, patch){
+  await setDoc(doc(db, "users", uid), { lastSeenAt: serverTimestamp() }, { merge: true });
   const p = { ...patch, updatedAt: serverTimestamp() };
   if (typeof p.displayName === "string"){
     p.displayNameLower = p.displayName.toLowerCase();

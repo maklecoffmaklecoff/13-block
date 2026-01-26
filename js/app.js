@@ -4,6 +4,8 @@ import { parseHash } from "./router.js";
 import { setActiveTab, setAuthedVisibility, openModal } from "./ui.js";
 import { notify } from "./notify.js";
 import { cleanupChat } from "./pages/chat.js";
+import { touchUserActivity } from "./db.js";
+
 
 const state = {
   authed: false,
@@ -12,6 +14,52 @@ const state = {
   userDoc: null,
   isAdmin: false
 };
+
+let activityTimer = null;
+let lastActivityPing = 0;
+
+async function pingActivity(){
+  if (!state.authed || !state.uid) return;
+
+  const now = Date.now();
+  if (now - lastActivityPing < 90_000) return; // throttle: 90s
+  lastActivityPing = now;
+
+  try {
+    await touchUserActivity(state.uid);
+  } catch {
+    // ignore (offline / rules / transient errors)
+  }
+}
+
+function startActivityHeartbeat(){
+  stopActivityHeartbeat();
+  // initial ping
+  pingActivity();
+  // periodic ping
+  activityTimer = setInterval(pingActivity, 60_000);
+
+  // ping when user returns to tab
+  document.addEventListener("visibilitychange", onVis);
+  window.addEventListener("focus", onFocus);
+
+}
+
+function stopActivityHeartbeat(){
+  if (activityTimer) clearInterval(activityTimer);
+  activityTimer = null;
+  lastActivityPing = 0;
+  document.removeEventListener("visibilitychange", onVis);
+  window.removeEventListener("focus", onFocus);
+}
+
+function onVis(){
+  if (!document.hidden) pingActivity();
+}
+function onFocus(){
+  pingActivity();
+}
+
 
 const pagesPromise = (async ()=>{
   const [home, roster, events, profile, chat, admin, user, calculator] = await Promise.all([
@@ -417,6 +465,9 @@ initAuth(({ firebaseUser, userDoc })=>{
   state.authed = !!firebaseUser;
   state.uid = firebaseUser?.uid || null;
   state.isAdmin = (userDoc?.role === "admin");
+
+  if (state.authed) startActivityHeartbeat();
+  else stopActivityHeartbeat();
 
   renderUserbox();
   setAuthedVisibility({ authed: state.authed, isAdmin: state.isAdmin });

@@ -56,54 +56,54 @@ export async function renderRoster(ctx) {
   // Controls (sticky)
   const controls = document.createElement("div");
   controls.className = "card roster-controls";
-controls.innerHTML = `
-  <div class="roster-head">
-    <div>
-      <div class="card-title">Состав клана</div>
-      <div class="card-sub">Поиск • фильтры</div>
-    </div>
+  controls.innerHTML = `
+    <div class="roster-head">
+      <div>
+        <div class="card-title">Состав клана</div>
+        <div class="card-sub">Поиск • фильтры${ctx.isAdmin ? " • онлайн" : ""}</div>
+      </div>
 
-    <div class="roster-toolbar">
-      <input class="input" id="search" placeholder="Поиск по нику${ctx.isAdmin ? " или UID" : ""}..." />
+      <div class="roster-toolbar">
+        <input class="input" id="search" placeholder="Поиск по нику${ctx.isAdmin ? " или UID" : ""}..." />
 
-      <select class="input" id="sort">
-        <option value="joinedAt_desc">Сортировка: новые</option>
-        <option value="joinedAt_asc">Сортировка: старые</option        <option value="power">Топ: сила</option>
-        <option value="hp">Топ: хп</option>
-        <option value="energy">Топ: энергия</option>
-        <option value="respect">Топ: уважение</option>
-        <option value="armor">Топ: броня</option>
-        <option value="resistance">Топ: сопротивление</option>
-        ${ctx.isAdmin ? `<option value="activity">Активность: недавно</option>` : ``}
-      </select>
+        <select class="input" id="sort">
+          <option value="joinedAt_desc">Сортировка: новые</option>
+          <option value="joinedAt_asc">Сортировка: старые</option>
+          <option value="power">Топ: сила</option>
+          <option value="hp">Топ: хп</option>
+          <option value="energy">Топ: энергия</option>
+          <option value="respect">Топ: уважение</option>
+          <option value="armor">Топ: броня</option>
+          <option value="resistance">Топ: сопротивление</option>
+          ${ctx.isAdmin ? `<option value="activity">Активность: недавно</option>` : ``}
+        </select>
 
-      <button class="btn" id="toggleView" style="width:auto;">Вид: компакт</button>
+        <button class="btn" id="toggleView" style="width:auto;">Вид: компакт</button>
 
-      <div class="roster-actions">
-        <span class="badge" id="count">Участников: ${members.length}</span>
-        <button class="btn primary" id="applyBtn" style="display:none; width:auto;">Заявка в клан</button>
-        ${ctx.isAdmin ? `<button class="btn" id="adminApps" style="width:auto;">Админ: заявки</button>` : ``}
+        <div class="roster-actions">
+          <span class="badge" id="count">Участников: ${members.length}</span>
+          <button class="btn primary" id="applyBtn" style="display:none; width:auto;">Заявка в клан</button>
+          ${ctx.isAdmin ? `<button class="btn" id="adminApps" style="width:auto;">Админ: заявки</button>` : ``}
+        </div>
       </div>
     </div>
-  </div>
 
-  <div class="hr"></div>
+    <div class="hr"></div>
 
-  <div class="roster-filters">
-    <div class="seg" id="segRoster">
-      <button data-f="all" class="active">Все</button>
-      <button data-f="filled">Со статами</button>
-      <button data-f="empty">Без статов</button>
-      ${ctx.isAdmin ? `<button data-f="inactive">Неактив 14д+</button>` : ``}
+    <div class="roster-filters">
+      <div class="seg" id="segRoster">
+        <button data-f="all" class="active">Все</button>
+        <button data-f="filled">Со статами</button>
+        <button data-f="empty">Без статов</button>
+        ${ctx.isAdmin ? `<button data-f="inactive">Неактив 14д+</button>` : ``}
+      </div>
+
+      <div class="roster-right">
+        <span class="badge" id="shown">Показано: ${members.length} / ${members.length}</span>
+        ${ctx.isAdmin ? `<button class="btn small" id="refreshActivity" style="width:auto;">Обновить активность</button>` : ``}
+      </div>
     </div>
-
-    <div class="roster-right">
-      <span class="badge" id="shown">Показано: ${members.length} / ${members.length}</span>
-      ${ctx.isAdmin ? `<button class="btn small" id="refreshActivity" style="width:auto;">Обновить активность</button>` : ``}
-    </div>
-  </div>
-`;
-
+  `;
   root.appendChild(controls);
 
   let member = false;
@@ -136,7 +136,7 @@ controls.innerHTML = `
     filter: "all",
     compact: true,
     limit: 60,
-    activity: new Map(), // uid -> updatedAtMillis
+    activity: new Map(), // uid -> lastSeenAt/updatedAt millis
     activityLoaded: false,
   };
 
@@ -157,7 +157,7 @@ controls.innerHTML = `
       const snap = await getDocs(qy);
       snap.forEach((docSnap) => {
         const d = docSnap.data() || {};
-        out.set(docSnap.id, toMillis(d.updatedAt));
+        out.set(docSnap.id, toMillis(d.lastSeenAt || d.updatedAt));
       });
     }
     return out;
@@ -204,7 +204,8 @@ controls.innerHTML = `
   const openQuickProfile = (m) => {
     const node = document.createElement("div");
     const filled = hasFilledStats(m.stats || {});
-    const updatedAtMs = ctx.isAdmin ? (state.activity.get(m.uid) || 0) : 0;
+    const lastSeenMs = ctx.isAdmin ? (state.activity.get(m.uid) || 0) : 0;
+    const online = ctx.isAdmin && isOnline(lastSeenMs);
 
     node.innerHTML = `
       <div class="row">
@@ -215,7 +216,11 @@ controls.innerHTML = `
             <div class="muted" style="font-size:12px;">💪: <b>${formatPower(m.power ?? calcPower(m.stats || {}))}</b></div>
             ${filled ? `` : `<div style="margin-top:6px;"><span class="badge warn">Статы не заполнены</span></div>`}
             ${ctx.isAdmin ? `<div class="muted" style="font-family:var(--mono); font-size:12px; margin-top:6px;">${escapeHtml(m.uid)}</div>` : ``}
-            ${ctx.isAdmin ? `<div class="muted" style="font-size:12px; margin-top:6px;">Активность: <b>${escapeHtml(fmtAgo(updatedAtMs))}</b></div>` : ``}
+            ${ctx.isAdmin ? `
+              <div style="margin-top:6px;">
+                <span class="badge ${online ? "ok" : ""}">${online ? "Онлайн" : `Активность: ${escapeHtml(fmtAgo(lastSeenMs))}`}</span>
+              </div>
+            ` : ``}
           </div>
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
@@ -249,8 +254,9 @@ controls.innerHTML = `
       ? `<div class="member-uid">${escapeHtml(m.uid || "")}</div>`
       : `<div class="member-uid">UID скрыт</div>`;
 
-    const updatedAtMs = ctx.isAdmin ? (state.activity.get(m.uid) || 0) : 0;
-    const inactiveDays = ctx.isAdmin ? daysSince(updatedAtMs) : 0;
+    const lastSeenMs = ctx.isAdmin ? (state.activity.get(m.uid) || 0) : 0;
+    const inactiveDays = ctx.isAdmin ? daysSince(lastSeenMs) : 0;
+    const online = ctx.isAdmin && isOnline(lastSeenMs);
 
     el.innerHTML = `
       <div class="member-head">
@@ -261,7 +267,13 @@ controls.innerHTML = `
             <div class="muted" style="font-size:12px;">💪: <b>${formatPower(m.power)}</b></div>
             ${uidLine}
             ${m.filled ? `` : `<div style="margin-top:6px;"><span class="badge warn">Статы не заполнены</span></div>`}
-            ${ctx.isAdmin ? `<div style="margin-top:6px;"><span class="badge ${inactiveDays >= 14 ? "bad" : ""}">Активность: ${escapeHtml(fmtAgo(updatedAtMs))}</span></div>` : ``}
+            ${ctx.isAdmin ? `
+              <div style="margin-top:6px;">
+                <span class="badge ${online ? "ok" : (inactiveDays >= 14 ? "bad" : "")}">
+                  ${online ? "Онлайн" : `Активность: ${escapeHtml(fmtAgo(lastSeenMs))}`}
+                </span>
+              </div>
+            ` : ``}
           </div>
         </div>
       </div>
@@ -321,7 +333,7 @@ controls.innerHTML = `
     if (ctx.isAdmin) {
       try {
         await ensureActivityLoaded();
-      } catch (e) {
+      } catch {
         // non-fatal
       }
     }
@@ -588,9 +600,7 @@ controls.innerHTML = `
           };
 
           tr.querySelector(`[data-approve="${CSS.escape(a.uid)}"]`).addEventListener("click", () => approve(false));
-          tr
-            .querySelector(`[data-approve-open="${CSS.escape(a.uid)}"]`)
-            .addEventListener("click", () => approve(true));
+          tr.querySelector(`[data-approve-open="${CSS.escape(a.uid)}"]`).addEventListener("click", () => approve(true));
 
           tr.querySelector(`[data-reject="${CSS.escape(a.uid)}"]`).addEventListener("click", async () => {
             try {
@@ -761,4 +771,8 @@ function escapeHtml(s) {
 }
 function escapeAttr(s) {
   return String(s ?? "").replace(/"/g, "&quot;");
+}
+
+function isOnline(lastSeenMs) {
+  return !!lastSeenMs && (Date.now() - lastSeenMs) <= 120_000; // 2 minutes
 }
