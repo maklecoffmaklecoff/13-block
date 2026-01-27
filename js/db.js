@@ -50,8 +50,9 @@ export async function getMyProfile(uid){
 }
 
 export async function touchUserActivity(uid){
-  await updateDoc(doc(db, "users", uid), { lastSeenAt: serverTimestamp() });
+  await setDoc(doc(db, "users", uid), { lastSeenAt: serverTimestamp() }, { merge: true });
 }
+
 
 export async function updateUserProfile(uid, patch){
   await setDoc(doc(db, "users", uid), { lastSeenAt: serverTimestamp() }, { merge: true });
@@ -79,6 +80,35 @@ export async function searchUsersByNamePrefix(prefix, lim = 20){
 export async function setUserRole(uid, role){
   await updateDoc(doc(db, "users", uid), { role, updatedAt: serverTimestamp() });
 }
+
+/* Recipes */
+export async function listRecipes(){
+  const qy = query(collection(db, "recipes"), orderBy("name", "asc"), limit(1000));
+  const snap = await getDocs(qy);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+
+export async function getRecipe(recipeId){
+  const snap = await getDoc(doc(db, "recipes", recipeId));
+  return snap.exists() ? ({ id: snap.id, ...snap.data() }) : null;
+}
+
+export async function upsertRecipe(recipeId, payload){
+  const ref = doc(db, "recipes", recipeId);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()){
+    await setDoc(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  } else {
+    await updateDoc(ref, { ...payload, updatedAt: serverTimestamp() });
+  }
+}
+
+export async function deleteRecipe(recipeId){
+  await deleteDoc(doc(db, "recipes", recipeId));
+}
+
 
 /* Clan info */
 export async function getClanInfo(){

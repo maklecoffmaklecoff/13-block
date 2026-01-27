@@ -35,7 +35,7 @@ async function pingActivity(){
 function startActivityHeartbeat(){
   stopActivityHeartbeat();
   // initial ping
-  pingActivity();
+  void pingActivity();
   // periodic ping
   activityTimer = setInterval(pingActivity, 60_000);
 
@@ -54,15 +54,15 @@ function stopActivityHeartbeat(){
 }
 
 function onVis(){
-  if (!document.hidden) pingActivity();
+  if (!document.hidden) void pingActivity();
 }
 function onFocus(){
-  pingActivity();
+  void pingActivity();
 }
 
 
 const pagesPromise = (async ()=>{
-  const [home, roster, events, profile, chat, admin, user, calculator] = await Promise.all([
+  const [home, roster, events, profile, chat, admin, user, calculator, recipes] = await Promise.all([
     import("./pages/home.js"),
     import("./pages/roster.js"),
     import("./pages/events.js"),
@@ -71,9 +71,12 @@ const pagesPromise = (async ()=>{
     import("./pages/admin.js"),
     import("./pages/user.js"),
     import("./pages/calculator.js"),
+    import("./pages/recipes.js"),
   ]);
-  return { home, roster, events, profile, chat, admin, user, calculator };
+  return { home, roster, events, profile, chat, admin, user, calculator, recipes };
 })();
+
+
 
 function applyTheme(){
   const sel = document.getElementById("themeSelect");
@@ -429,6 +432,9 @@ const ctx = {
     case "chat":
       nodePromise = pages.chat.renderChat(ctx);
       break;
+    case "recipes":
+      nodePromise = pages.recipes.renderRecipes(ctx);
+      break;
     case "admin":
       nodePromise = pages.admin.renderAdmin(ctx);
       break;
@@ -445,6 +451,7 @@ const ctx = {
       nodePromise = pages.home.renderHome(ctx);
       break;
   }
+
 
   const node = await nodePromise;
   page.innerHTML = "";
@@ -466,8 +473,8 @@ initAuth(({ firebaseUser, userDoc })=>{
   state.uid = firebaseUser?.uid || null;
   state.isAdmin = (userDoc?.role === "admin");
 
-  if (state.authed) startActivityHeartbeat();
-  else stopActivityHeartbeat();
+  //if (state.authed) startActivityHeartbeat();
+  //else stopActivityHeartbeat();
 
   renderUserbox();
   setAuthedVisibility({ authed: state.authed, isAdmin: state.isAdmin });

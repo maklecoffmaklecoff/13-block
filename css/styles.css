@@ -1716,3 +1716,657 @@ body.theme-light .event-card .req-mini{
     backdrop-filter: none;
   }
 }
+
+/* Admin: scroll for long recipe tables */
+.adm-scroll{
+  max-height: calc(100dvh - 320px);
+  overflow: auto;
+  border-radius: 14px;
+}
+
+.adm-scroll thead th{
+  position: sticky;
+  top: 0;
+  background: var(--card, #fff);
+  z-index: 2;
+}
+
+.adm-rec-group td{ padding: 8px 0; }
+.adm-rec-var td{ padding-top: 10px; padding-bottom: 10px; }
+.adm-rec-var{ background: rgba(255,255,255,0.01); }
+
+
+/* =========================================================
+   RECIPES UI (CLEAN + WORKING) — copy/paste
+   ========================================================= */
+
+.recipes-page{
+  display: grid;
+  gap: 14px;
+}
+
+/* Layout */
+.recipes-page .rcp-layout{
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+@media (max-width: 980px){
+  .recipes-page .rcp-layout{ grid-template-columns: 1fr; }
+}
+
+/* Make cards same height and prevent overlap */
+.recipes-page .rcp-left,
+.recipes-page .rcp-right{
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  height: calc(100vh - 250px); /* под шапку + фильтры */
+  overflow: hidden;
+}
+
+@media (max-width: 980px){
+  .recipes-page .rcp-left,
+  .recipes-page .rcp-right{
+    height: auto;
+    overflow: visible;
+  }
+}
+
+/* Scroll areas */
+.recipes-page #grid{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.recipes-page #paneWrap{
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+@media (max-width: 980px){
+  .recipes-page #grid,
+  .recipes-page #paneWrap{
+    overflow: visible;
+    padding-right: 0;
+  }
+}
+
+/* Icons */
+.rcp-icoBox{
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+.rcp-icoBox.is-missing{ opacity: 0.35; }
+
+/* Catalog groups */
+.rcp-catGroup{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.02);
+  border-radius: 16px;
+  padding: 10px;
+}
+.rcp-catGroup + .rcp-catGroup{ margin-top: 10px; }
+
+.rcp-catHead{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 10px;
+}
+
+.rcp-catLeft{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rcp-catIco{
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex: 0 0 auto;
+}
+.rcp-catIco .rcp-icoBox{
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.rcp-catMeta{ min-width:0; }
+.rcp-catTitle{
+  font-weight: 1000;
+  white-space: nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+}
+.rcp-catSub{
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+}
+
+.rcp-catBody{
+  margin-top: 10px;
+  display:grid;
+  gap: 8px;
+}
+
+/* Variant button */
+.rcp-variant{
+  width:100%;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  border-radius: 14px;
+  padding: 10px 12px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align:left;
+  cursor:pointer;
+}
+.rcp-variant:hover{
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.16);
+}
+
+.rcp-variant-left{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width:0;
+}
+.rcp-variant-ico{
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex: 0 0 auto;
+}
+.rcp-variant-ico .rcp-icoBox{
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+}
+.rcp-variant-name{
+  font-weight: 950;
+  white-space: nowrap;
+  overflow:hidden;
+  text-overflow: ellipsis;
+}
+
+.rcp-variant-right{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.rcp-variant.active{
+  border-color: rgba(124,92,255,0.55);
+  background: rgba(124,92,255,0.12);
+}
+
+/* Rarity dot */
+.rcp-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.20);
+  display:inline-block;
+}
+.rcp-dot.r-gray{ background: rgba(232,238,247,0.75); }
+.rcp-dot.r-green{ background: rgba(33,197,93,0.85); }
+.rcp-dot.r-blue{ background: rgba(59,130,246,0.90); }
+.rcp-dot.r-purple{ background: rgba(168,85,247,0.90); }
+
+/* Right: recipe header */
+.rcp-main{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+}
+.rcp-main-ico{
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex: 0 0 auto;
+}
+.rcp-main-ico .rcp-icoBox{
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+}
+
+/* Ingredients cards */
+.rcp-ings{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px){
+  .rcp-ings{ grid-template-columns: 1fr; }
+}
+.rcp-ing{
+  display:flex;
+  gap: 12px;
+  align-items:center;
+  border: 1px solid rgba(255,255,255,0.07);
+  background: rgba(255,255,255,0.03);
+  border-radius: 18px;
+  padding: 14px;
+}
+.rcp-ing-ico{
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  flex: 0 0 auto;
+}
+.rcp-ing-ico .rcp-icoBox{
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+}
+.rcp-ing-meta{ min-width:0; }
+.rcp-ing-name{ font-weight: 1000; line-height:1.15; }
+.rcp-ing .muted{ font-size: 12px; }
+
+/* Game-like "Стоимость" strip */
+.rcp-cost{
+  margin-top: 10px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.02);
+  border-radius: 16px;
+  padding: 10px;
+}
+.rcp-cost-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom: 10px;
+}
+.rcp-cost-row{
+  display:flex;
+  gap: 10px;
+  overflow:auto;
+  padding-bottom: 4px;
+}
+.rcp-cost-row::-webkit-scrollbar{ height: 8px; }
+.rcp-cost-row::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.12);
+  border-radius: 999px;
+}
+.rcp-costItem{
+  flex: 0 0 auto;
+  width: 96px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  border-radius: 14px;
+  padding: 10px 10px;
+  display:grid;
+  justify-items:center;
+  gap: 6px;
+}
+.rcp-costItem .rcp-icoBox{
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+.rcp-costQty{
+  font-weight: 1000;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* Rarity border via CSS vars */
+.rar-gray{   --rar-bd: rgba(232,238,247,0.55); --rar-glow: rgba(232,238,247,0.14); }
+.rar-green{  --rar-bd: rgba(33,197,93,0.70);  --rar-glow: rgba(33,197,93,0.16); }
+.rar-blue{   --rar-bd: rgba(59,130,246,0.78); --rar-glow: rgba(59,130,246,0.16); }
+.rar-purple{ --rar-bd: rgba(168,85,247,0.78); --rar-glow: rgba(168,85,247,0.16); }
+
+.rar-gray .rcp-main-ico,
+.rar-green .rcp-main-ico,
+.rar-blue .rcp-main-ico,
+.rar-purple .rcp-main-ico,
+.rar-gray .rcp-ing-ico,
+.rar-green .rcp-ing-ico,
+.rar-blue .rcp-ing-ico,
+.rar-purple .rcp-ing-ico,
+.rar-gray .rcp-variant-ico,
+.rar-green .rcp-variant-ico,
+.rar-blue .rcp-variant-ico,
+.rar-purple .rcp-variant-ico{
+  border-color: var(--rar-bd);
+  box-shadow: 0 0 0 2px var(--rar-glow);
+}
+
+
+/* ===== Catalog: collapsible groups + quick filters + recent ===== */
+
+.rcp-chipbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.rcp-chip{
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: 12px;
+  width: auto;
+}
+.rcp-chip.active{
+  border-color: rgba(124,92,255,0.55);
+  box-shadow: 0 0 0 3px rgba(124,92,255,0.14);
+  background: rgba(124,92,255,0.10);
+}
+
+.rcp-recent{
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.02);
+  border-radius: 16px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+.rcp-recent-title{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom: 10px;
+  font-weight: 1000;
+}
+.rcp-recent-row{
+  display:flex;
+  gap:10px;
+  overflow:auto;
+  padding-bottom: 4px;
+}
+.rcp-recent-item{
+  flex: 0 0 auto;
+  width: 92px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.03);
+  border-radius: 14px;
+  padding: 10px;
+  display:grid;
+  justify-items:center;
+  gap: 6px;
+  cursor:pointer;
+}
+.rcp-recent-item:hover{
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.16);
+}
+.rcp-recent-item .rcp-icoBox{
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+.rcp-recent-item .t{
+  font-size: 11px;
+  color: var(--muted);
+  text-align:center;
+  line-height: 1.2;
+  max-height: 2.4em;
+  overflow:hidden;
+}
+
+/* Collapsible group body */
+.rcp-catBody{
+  display:none; /* default collapsed */
+}
+.rcp-catGroup.open .rcp-catBody{
+  display:grid;
+}
+
+/* clickable header */
+.rcp-catHead{
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Recent: apply rarity border/glow to the tile itself */
+.rar-gray.rcp-recent-item,
+.rar-green.rcp-recent-item,
+.rar-blue.rcp-recent-item,
+.rar-purple.rcp-recent-item{
+  border-color: var(--rar-bd);
+  box-shadow: 0 0 0 2px var(--rar-glow);
+}
+
+/* Admin table header: theme-aware + readable + sticky-safe */
+.adm-scroll .table thead th{
+  color: var(--text) !important;
+  opacity: 1 !important;
+  background: var(--surface) !important;  /* под тему */
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.adm-scroll .table thead{
+  background: var(--surface) !important;
+}
+
+/* если используешь sticky header */
+.adm-scroll thead th{
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* =========================
+   HOME welcome (v3)
+   ========================= */
+
+.homew{
+  display:grid;
+  gap:14px;
+}
+
+/* Big welcome hero */
+.homew-hero{
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 20px;
+  background:
+    radial-gradient(1200px 420px at 10% 0%, rgba(124,92,255,0.22), transparent 60%),
+    radial-gradient(900px 360px at 90% 10%, rgba(34,211,238,0.14), transparent 55%),
+    rgba(255,255,255,0.04);
+  box-shadow: var(--shadowSoft, 0 10px 26px rgba(0,0,0,0.18));
+}
+
+.homew-heroTop{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  flex-wrap:wrap;
+  align-items:flex-start;
+}
+
+.homew-title{
+  margin:0;
+  font-size: 34px;
+  font-weight: 1000;
+  letter-spacing: .2px;
+}
+
+.homew-sub{
+  margin-top: 10px;
+  color: var(--muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  max-width: 820px;
+}
+
+.homew-cta{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+.homew-cta .btn{ width:auto; }
+@media (max-width: 640px){
+  .homew-cta .btn{ width:100%; }
+}
+
+/* “Start here” steps */
+.homew-steps{
+  margin-top: 14px;
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 12px;
+}
+@media (max-width: 980px){ .homew-steps{ grid-template-columns: 1fr; } }
+
+.homew-step{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  border-radius: 18px;
+  padding: 14px;
+  display:grid;
+  gap:8px;
+}
+.homew-step .n{
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display:grid;
+  place-items:center;
+  font-weight: 1000;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  font-family: var(--mono);
+}
+.homew-step .t{ font-weight: 1000; }
+.homew-step .d{ color: var(--muted); font-size: 13px; line-height: 1.45; }
+.homew-step .row .btn{ width:auto; }
+@media (max-width: 640px){ .homew-step .row .btn{ width:100%; } }
+
+/* Grid: left info, right news */
+.homew-grid{
+  display:grid;
+  grid-template-columns: 1.05fr 1.35fr;
+  gap:14px;
+  align-items:start;
+}
+@media (max-width: 980px){ .homew-grid{ grid-template-columns: 1fr; } }
+
+/* Simple “cards” inside */
+.homew-mini{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  border-radius: 18px;
+  padding: 14px;
+}
+
+/* Welcome tabs */
+.homew-tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom: 10px;
+}
+.homew-tab{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--muted);
+  padding: 8px 10px;
+  border-radius: 999px;
+  cursor:pointer;
+  font-weight: 1000;
+  font-size: 12px;
+}
+.homew-tab.active{
+  color: var(--text);
+  border-color: rgba(124,92,255,0.55);
+  box-shadow: 0 0 0 3px rgba(124,92,255,0.14);
+  background: rgba(124,92,255,0.10);
+}
+
+/* News feed */
+.homew-newsList{ display:grid; gap:10px; }
+.homew-newsItem{
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  border-radius: 18px;
+  padding: 14px;
+}
+.homew-newsItem .tt{ font-weight: 1000; }
+.homew-newsItem .tx{
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+.homew-newsItem .tx.clamp2{
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.homew-newsItem .meta{
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--mono);
+}
+
+/* Footer helper */
+.homew-foot{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.homew-foot .muted{ font-size: 12px; }
+
+.homew .btn{ width:auto; }
+@media (max-width: 640px){
+  .homew .btn{ width:100%; }
+}

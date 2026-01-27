@@ -90,13 +90,14 @@ export async function renderRoster(ctx) {
 
     <div class="hr"></div>
 
-    <div class="roster-filters">
-      <div class="seg" id="segRoster">
-        <button data-f="all" class="active">Все</button>
-        <button data-f="filled">Со статами</button>
-        <button data-f="empty">Без статов</button>
-        ${ctx.isAdmin ? `<button data-f="inactive">Неактив 14д+</button>` : ``}
-      </div>
+<div class="seg" id="segRoster">
+  <button data-f="all" class="active">Все</button>
+  <button data-f="filled">Со статами</button>
+  <button data-f="empty">Без статов</button>
+  ${ctx.isAdmin ? `<button data-f="online">Онлайн</button>` : ``}
+  ${ctx.isAdmin ? `<button data-f="inactive">Неактив 14д+</button>` : ``}
+</div>
+
 
       <div class="roster-right">
         <span class="badge" id="shown">Показано: ${members.length} / ${members.length}</span>
@@ -305,6 +306,11 @@ export async function renderRoster(ctx) {
 
       if (state.filter === "filled") return !!m.filled;
       if (state.filter === "empty") return !m.filled;
+
+	  if (state.filter === "online" && ctx.isAdmin) {
+		const ms = state.activity.get(m.uid) || 0;
+		return isOnline(ms);
+	  }
 
       if (state.filter === "inactive" && ctx.isAdmin) {
         const ms = state.activity.get(m.uid) || 0;
